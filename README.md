@@ -30,17 +30,17 @@ It is a single small Tkinter app with no third-party runtime dependencies.
 
 | | |
 |---|---|
-| 🗂 **Models from `models.ini`** | Each `[section]` is a model. `[*]` holds defaults every model inherits. Same format as llama-server's router-mode presets (keys are flags without the leading dashes). |
-| ✏️ **Built-in config editor** | Form fields for the common flags (context, GPU layers, `n-cpu-moe`, threads, batch/ubatch, flash-attn, K/V cache types, parallel, host, port, mmproj, jinja, mlock, …) plus a free-text box for everything else. |
-| 👁 **Live command preview** | See the exact command line, with global defaults merged in, before you start. Inherited values are hinted (`↳ global: 32768`). |
-| ▶ **One-key control** | `F5` start / restart, `Shift+F5` stop, `F6` open WebUI. |
-| 🔁 **One model at a time** | Starting a model automatically stops the running one first, then launches the new one once the old process has exited. Handy on a single GPU. |
-| 🌐 **Auto-open WebUI** | Optional. Opens the browser when the server is ready (detected from the log line or a `/health` check, whichever comes first). |
-| 🔌 **MCP support** | Global `--mcp-servers-config` path and "Use MCP" switch, with a per-model override (`default` / `on` / `off`). |
-| 📊 **Speed readout** | Prompt-processing and generation tokens/s parsed from the server log and shown in the header. |
-| 🧪 **Benchmark menu** | `llama-bench` runner with sweeps (batch, KV cache, threads, MoE) and Markdown reports, using the same `models.ini`. |
-| 💾 **Safe editing** | Comments and layout in `models.ini` are preserved; a `models.ini.bak` is written on every save; edits made in an external editor are picked up when the window regains focus. |
-| 🧰 **Quality of life** | Model filter with arrow-key switching, context menu, duplicate / rename / delete, "New from GGUF…" file picker, log copy/save, dark theme with dark title bar. |
+|  **Models from `models.ini`** | Each `[section]` is a model. `[*]` holds defaults every model inherits. Same format as llama-server's router-mode presets (keys are flags without the leading dashes). |
+|  **Built-in config editor** | Form fields for the common flags (context, GPU layers, `n-cpu-moe`, threads, batch/ubatch, flash-attn, K/V cache types, parallel, host, port, mmproj, jinja, mlock, …) plus a free-text box for everything else. |
+|  **Live command preview** | See the exact command line, with global defaults merged in, before you start. Inherited values are hinted (`↳ global: 32768`). |
+|  **One-key control** | `F5` start / restart, `Shift+F5` stop, `F6` open WebUI. |
+|  **One model at a time** | Starting a model automatically stops the running one first, then launches the new one once the old process has exited. Handy on a single GPU. |
+|  **Auto-open WebUI** | Optional. Opens the browser when the server is ready (detected from the log line or a `/health` check, whichever comes first). |
+|  **MCP support** | Global `--mcp-servers-config` path and "Use MCP" switch, with a per-model override (`default` / `on` / `off`). |
+|  **Speed readout** | Prompt-processing and generation tokens/s parsed from the server log and shown in the header. |
+|  **Benchmark menu** | `llama-bench` runner with sweeps (batch, KV cache, threads, MoE) and Markdown reports, using the same `models.ini`. |
+|  **Safe editing** | Comments and layout in `models.ini` are preserved; a `models.ini.bak` is written on every save; edits made in an external editor are picked up when the window regains focus. |
+|  **Quality of life** | Model filter with arrow-key switching, context menu, duplicate / rename / delete, "New from GGUF…" file picker, log copy/save, dark theme with dark title bar. |
 
 ## Quick start
 
