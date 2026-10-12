@@ -53,8 +53,8 @@ Grab the latest `LlamaRunner-*-win64.zip` from the [**Releases**](../../releases
 ### Option B: run from source
 
 ```bat
-git clone https://github.com/<you>/<repo>.git
-cd <repo>
+git clone https://github.com/merlinwarage/Llama-Runner.git
+cd Llama-Runner
 run-dev.bat
 ```
 
@@ -66,7 +66,7 @@ See [Building from source](#building-from-source).
 
 ### First run
 
-1. Open the **Settings** tab and set the path to your `llama-server.exe`.
+1. Open the **Settings** tab and set the path to your `llama-server.exe`. [https://github.com/ggml-org/llama.cpp](https://github.com/ggml-org/llama.cpp)
 2. Point **Models config** at your `models.ini` (or use the bundled example).
 3. Select a model in the sidebar and press **F5**.
 
