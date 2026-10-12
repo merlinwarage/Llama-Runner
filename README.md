@@ -275,11 +275,11 @@ settings.ini            Example settings
 
 ## Contributing
 
-Issues and pull requests are welcome. The app is two plain Python files plus the benchmark panel, with no build step beyond PyInstaller, so it is easy to hack on.
+Fork it, enjoy it. The app is two plain Python files plus the benchmark panel, with no build step beyond PyInstaller, so it is easy to hack on.
 
 ## License
 
-Add your license here (for example MIT).
+MIT
 
 ## Acknowledgements
 
