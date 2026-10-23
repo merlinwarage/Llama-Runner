@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "example-mcp-server": {
+      "command": "C:/Python/python.exe",
+      "env": {},
+      "args": ["I:/AI/mcp_server.py"]
+    }
+  }
+}
