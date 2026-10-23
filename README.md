@@ -10,7 +10,8 @@ Pick a model, tweak its flags, hit **F5**. Every model lives as a section in a s
 ![UI](https://img.shields.io/badge/UI-Tkinter-informational)
 ![Dependencies](https://img.shields.io/badge/runtime%20deps-none-brightgreen)
 
-<img src="docs/screenshot.jpg" alt="llama-server runner screenshot" width="900">
+<img src="docs/console.png" alt="Console" width="49%"><img src="docs/config.png" alt="Config" width="49%"><img src="docs/advanced.png" alt="Advanced" width="49%">
+<img src="docs/settings.png" alt="Settings" width="49%"><img src="docs/benchmark.png" alt="Benchmark" width="49%"><img src="docs/bench-settings.png" alt="Benchmark Settings" width="49%">
 
 </div>
 
@@ -28,19 +29,19 @@ It is a single small Tkinter app with no third-party runtime dependencies.
 
 ## Features
 
-| | |
-|---|---|
-|  **Models from `models.ini`** | Each `[section]` is a model. `[*]` holds defaults every model inherits. Same format as llama-server's router-mode presets (keys are flags without the leading dashes). |
-|  **Built-in config editor** | Form fields for the common flags (context, GPU layers, `n-cpu-moe`, threads, batch/ubatch, flash-attn, K/V cache types, parallel, host, port, mmproj, jinja, mlock, …) plus a free-text box for everything else. |
-|  **Live command preview** | See the exact command line, with global defaults merged in, before you start. Inherited values are hinted (`↳ global: 32768`). |
-|  **One-key control** | `F5` start / restart, `Shift+F5` stop, `F6` open WebUI. |
-|  **One model at a time** | Starting a model automatically stops the running one first, then launches the new one once the old process has exited. Handy on a single GPU. |
-|  **Auto-open WebUI** | Optional. Opens the browser when the server is ready (detected from the log line or a `/health` check, whichever comes first). |
-|  **MCP support** | Global `--mcp-servers-config` path and "Use MCP" switch, with a per-model override (`default` / `on` / `off`). |
-|  **Speed readout** | Prompt-processing and generation tokens/s parsed from the server log and shown in the header. |
-|  **Benchmark menu** | `llama-bench` runner with sweeps (batch, KV cache, threads, MoE) and Markdown reports, using the same `models.ini`. |
-|  **Safe editing** | Comments and layout in `models.ini` are preserved; a `models.ini.bak` is written on every save; edits made in an external editor are picked up when the window regains focus. |
-|  **Quality of life** | Model filter with arrow-key switching, context menu, duplicate / rename / delete, "New from GGUF…" file picker, log copy/save, dark theme with dark title bar. |
+|                              |                                                                                                                                                                                                                  |
+| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Models from `models.ini`** | Each `[section]` is a model. `[*]` holds defaults every model inherits. Same format as llama-server's router-mode presets (keys are flags without the leading dashes).                                           |
+| **Built-in config editor**   | Form fields for the common flags (context, GPU layers, `n-cpu-moe`, threads, batch/ubatch, flash-attn, K/V cache types, parallel, host, port, mmproj, jinja, mlock, …) plus a free-text box for everything else. |
+| **Live command preview**     | See the exact command line, with global defaults merged in, before you start. Inherited values are hinted (`↳ global: 32768`).                                                                                   |
+| **One-key control**          | `F5` start / restart, `Shift+F5` stop, `F6` open WebUI.                                                                                                                                                          |
+| **One model at a time**      | Starting a model automatically stops the running one first, then launches the new one once the old process has exited. Handy on a single GPU.                                                                    |
+| **Auto-open WebUI**          | Optional. Opens the browser when the server is ready (detected from the log line or a `/health` check, whichever comes first).                                                                                   |
+| **MCP support**              | Global `--mcp-servers-config` path and "Use MCP" switch, with a per-model override (`default` / `on` / `off`).                                                                                                   |
+| **Speed readout**            | Prompt-processing and generation tokens/s parsed from the server log and shown in the header.                                                                                                                    |
+| **Benchmark menu**           | `llama-bench` runner with sweeps (batch, KV cache, threads, MoE) and Markdown reports, using the same `models.ini`.                                                                                              |
+| **Safe editing**             | Comments and layout in `models.ini` are preserved; a `models.ini.bak` is written on every save; edits made in an external editor are picked up when the window regains focus.                                    |
+| **Quality of life**          | Model filter with arrow-key switching, context menu, duplicate / rename / delete, "New from GGUF…" file picker, log copy/save, dark theme with dark title bar.                                                   |
 
 ## Quick start
 
@@ -95,14 +96,14 @@ If you build it yourself and your antivirus still complains, these usually help:
 
 ### Requirements
 
-| Requirement | Details |
-|---|---|
-| **OS** | Windows 10 / 11, 64-bit (the app uses `taskkill` and Windows-specific APIs; builds on other OSes are not supported). |
-| **Python** | 3.10 or newer, 64-bit, from [python.org](https://www.python.org/downloads/windows/), installed with the **py launcher**, **pip**, and **tcl/tk and IDLE** options enabled (Tkinter ships with these; the Microsoft Store build also works). |
-| **PyInstaller** | Installed automatically by `build.bat` (`pip install --upgrade pyinstaller`). Listed in `requirements-build.txt`. |
-| **Internet** | Needed once to download PyInstaller with pip. |
-| **Runtime packages** | **None.** The app only uses the Python standard library (`tkinter`, `configparser`, `subprocess`, `threading`, `urllib`, …). |
-| **Optional** | A C compiler (Visual Studio Build Tools) only if you want to rebuild PyInstaller's bootloader. |
+| Requirement          | Details                                                                                                                                                                                                                                     |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **OS**               | Windows 10 / 11, 64-bit (the app uses `taskkill` and Windows-specific APIs; builds on other OSes are not supported).                                                                                                                        |
+| **Python**           | 3.10 or newer, 64-bit, from [python.org](https://www.python.org/downloads/windows/), installed with the **py launcher**, **pip**, and **tcl/tk and IDLE** options enabled (Tkinter ships with these; the Microsoft Store build also works). |
+| **PyInstaller**      | Installed automatically by `build.bat` (`pip install --upgrade pyinstaller`). Listed in `requirements-build.txt`.                                                                                                                           |
+| **Internet**         | Needed once to download PyInstaller with pip.                                                                                                                                                                                               |
+| **Runtime packages** | **None.** The app only uses the Python standard library (`tkinter`, `configparser`, `subprocess`, `threading`, `urllib`, …).                                                                                                                |
+| **Optional**         | A C compiler (Visual Studio Build Tools) only if you want to rebuild PyInstaller's bootloader.                                                                                                                                              |
 
 Check your setup:
 
@@ -204,18 +205,18 @@ Then override per model in its **Config** tab (`default` / `on` / `off`). The ch
 
 ## Keyboard shortcuts
 
-| Key | Action |
-|---|---|
-| `F5` | Start model (restart if running) |
-| `Shift+F5` | Stop (also cancels a pending start) |
-| `F6` | Open WebUI in the browser |
-| `Ctrl+S` | Save config to `models.ini` |
-| `Ctrl+F` | Focus model filter (`↑` / `↓` switches model) |
-| `Ctrl+Shift+N` | New model from a GGUF file |
-| `Ctrl+Shift+D` | Duplicate selected model |
-| `Ctrl+R` | Reload `models.ini` |
-| `Ctrl+L` | Clear console |
-| `Ctrl+1` / `2` / `3` | Console / Config / Settings tab |
+| Key                  | Action                                        |
+| -------------------- | --------------------------------------------- |
+| `F5`                 | Start model (restart if running)              |
+| `Shift+F5`           | Stop (also cancels a pending start)           |
+| `F6`                 | Open WebUI in the browser                     |
+| `Ctrl+S`             | Save config to `models.ini`                   |
+| `Ctrl+F`             | Focus model filter (`↑` / `↓` switches model) |
+| `Ctrl+Shift+N`       | New model from a GGUF file                    |
+| `Ctrl+Shift+D`       | Duplicate selected model                      |
+| `Ctrl+R`             | Reload `models.ini`                           |
+| `Ctrl+L`             | Clear console                                 |
+| `Ctrl+1` / `2` / `3` | Console / Config / Settings tab               |
 
 Starting a model auto-saves unsaved config changes first.
 
@@ -262,16 +263,16 @@ settings.ini            Example settings
 
 ## Troubleshooting
 
-| Problem | Fix |
-|---|---|
-| Antivirus blocks or deletes `LlamaRunner.exe` | Known false positive for unsigned PyInstaller apps, see [Antivirus warning](#️-antivirus-warning). Build it yourself or run from source. |
-| `llama-server not found` | Set the path in **Settings** and press **Apply & save**. |
-| `error while handling argument "--xyz": expected value` | A key has a bare flag where a value is needed. Check the **Command** preview in the Config tab. |
-| WebUI does not open | Enable **Open the WebUI…** in Settings. The console logs `[ready - opening …]` when it fires. Use **F6** to open it manually. |
-| `Port in use` prompt | Another process is listening on that port. Change `port` for the model or stop the other process. |
-| `MCP config not found` | Fix the path in Settings, or set the model's MCP to `off`. |
-| `No module named tkinter` when building | Reinstall Python from python.org with the **tcl/tk and IDLE** option enabled. |
-| Edits in `models.ini` not showing | Press `Ctrl+R`. Unsaved changes in the editor block auto-reload. |
+| Problem                                                 | Fix                                                                                                                                     |
+| ------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| Antivirus blocks or deletes `LlamaRunner.exe`           | Known false positive for unsigned PyInstaller apps, see [Antivirus warning](#️-antivirus-warning). Build it yourself or run from source. |
+| `llama-server not found`                                | Set the path in **Settings** and press **Apply & save**.                                                                                |
+| `error while handling argument "--xyz": expected value` | A key has a bare flag where a value is needed. Check the **Command** preview in the Config tab.                                         |
+| WebUI does not open                                     | Enable **Open the WebUI…** in Settings. The console logs `[ready - opening …]` when it fires. Use **F6** to open it manually.           |
+| `Port in use` prompt                                    | Another process is listening on that port. Change `port` for the model or stop the other process.                                       |
+| `MCP config not found`                                  | Fix the path in Settings, or set the model's MCP to `off`.                                                                              |
+| `No module named tkinter` when building                 | Reinstall Python from python.org with the **tcl/tk and IDLE** option enabled.                                                           |
+| Edits in `models.ini` not showing                       | Press `Ctrl+R`. Unsaved changes in the editor block auto-reload.                                                                        |
 
 ## Contributing
 
