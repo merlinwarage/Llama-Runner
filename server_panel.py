@@ -13,20 +13,28 @@ SETTINGS_FILE = "settings.ini"
 GLOBAL = "*"
 APP_ONLY = {"load-on-startup", "stop-timeout", "mcp"}  # keys never passed to llama-server
 PATH_KEYS = {"model", "mmproj", "model-draft", "lora", "lora-scaled", "chat-template-file", "grammar-file",
-             "json-schema-file", "slot-save-path", "media-path", "api-key-file", "ssl-key-file", "ssl-cert-file"}
+             "json-schema-file", "slot-save-path", "media-path", "api-key-file", "ssl-key-file", "ssl-cert-file",
+             "lookup-cache-static", "lookup-cache-dynamic", "spec-draft-model", "control-vector", "log-file",
+             "ui-config-file", "log-prompts-dir", "path", "models-dir", "models-preset", "video-ffmpeg-dir"}
 MUST_JOIN = {"model", "mmproj", "model-draft"}
 BOOL_FLAGS = {"jinja", "mlock", "no-mmap", "cont-batching", "no-cont-batching", "no-webui", "metrics", "slots",
               "no-slots", "kv-unified", "no-kv-offload", "swa-full", "verbose", "log-timestamps", "log-prefix",
               "no-warmup", "embedding", "embeddings", "reranking", "no-context-shift", "context-shift",
               "cpu-moe", "no-host", "no-op-offload", "check-tensors", "no-perf", "special", "mmap", "webui",
-              "warmup", "kv-offload", "op-offload", "direct-io", "no-direct-io"}
+              "warmup", "kv-offload", "op-offload", "direct-io", "no-direct-io", "no-mmproj-offload"}
 NEGATABLE = {"mmap", "webui", "cont-batching", "warmup", "context-shift", "kv-offload", "slots", "op-offload",
-             "perf", "direct-io"}
+             "perf", "direct-io", "repack", "escape", "log-jsonl", "log-prefix", "log-timestamps", "cors-credentials",
+             "cache-idle-slots", "cache-prompt", "prefill-assistant", "skip-chat-parsing", "reasoning-preserve",
+             "spec-draft-backend-sampling", "models-autoload", "mmproj-auto", "ui-mcp-proxy", "kv-unified", "agent"}
 SHORT_FLAGS = {"ngl", "ctk", "ctv", "ncmoe", "cmoe", "ctkd", "ctvd", "ngld", "hfr", "hff", "hfd", "hfrd", "hfv", "hffv",
                "tb", "tbd", "kvu", "nkvo", "np", "dev", "devd", "lcs", "lcd", "sps", "ctxcp"}
 TRUE = {"true", "yes", "enabled", "on", "1"}
 FALSE = {"false", "no", "disabled", "off", "0"}
 KV_TYPES = ["f32", "f16", "bf16", "q8_0", "q5_1", "q5_0", "q4_1", "q4_0", "iq4_nl"]
+
+LOAD_MODES = ["auto", "none", "mmap", "mlock", "mmap+mlock", "dio"]  # llama-server --load-mode
+LEGACY_LOAD = {"mlock", "no-mmap"}  # old checkboxes, migrated into load-mode
+FLOAT_RX = r"^-?\d+(\.\d+)?$"
 
 # (key, label, choices or None)
 ROWS = [
@@ -42,13 +50,274 @@ ROWS = [
     [("parallel", "Parallel slots", None),
      ("host", "Host", ["127.0.0.1", "0.0.0.0"]),
      ("port", "Port", None)],
+    [("temp", "Temperature (temp)", None),
+     ("top-p", "Top-p (top-p)", None),
+     ("top-k", "Top-k (top-k)", None)],
+    [("min-p", "Min-p (min-p)", None),
+     ("presence-penalty", "Presence penalty (presence-penalty)", None),
+     ("repeat-penalty", "Repeat penalty (repeat-penalty)", None)],
 ]
-PATH_FIELDS = [("model", "Model (.gguf)"), ("mmproj", "Multimodal projector (mmproj)")]
-FLAG_FIELDS = [("jinja", "jinja"), ("mlock", "mlock"), ("no-mmap", "no-mmap"), ("no-webui", "no-webui"),
-               ("metrics", "metrics")]
+PATH_FIELDS = [("model", "Model (.gguf)"), ("mmproj", "Multimodal projector (mmproj)"),
+               ("chat-template-file", "Chat template file (chat-template-file)")]
+FLAG_FIELDS = [("jinja", "jinja"), ("no-webui", "no-webui"), ("metrics", "metrics"),
+               ("no-mmproj-offload", "no-mmproj-offload")]
 INT_KEYS = {"ctx-size": r"^\d+$", "n-cpu-moe": r"^\d+$", "threads": r"^-?\d+$", "batch-size": r"^\d+$",
             "ubatch-size": r"^\d+$", "parallel": r"^-?\d+$", "port": r"^\d+$",
-            "n-gpu-layers": r"^(\d+|-1|auto|all)$"}
+            "n-gpu-layers": r"^(\d+|-1|auto|all)$",
+            "top-k": r"^-?\d+$", "temp": FLOAT_RX, "top-p": FLOAT_RX, "min-p": FLOAT_RX,
+            "presence-penalty": FLOAT_RX, "repeat-penalty": FLOAT_RX}
+ADV_SPEC = r"""
+## CPU & threading
+threads-batch | t | Threads for batch/prompt processing (default: same as threads)
+cpu-mask | t | CPU affinity mask, arbitrarily long hex
+cpu-range | t | CPU range for affinity, lo-hi
+cpu-strict | c:0,1 | Strict CPU placement (default 0)
+prio | c:-1,0,1,2,3 | Process priority: low -1, normal 0, medium 1, high 2, realtime 3
+poll | t | Polling level 0-100 to wait for work (default 50)
+cpu-mask-batch | t | CPU affinity mask for batch/prompt threads
+cpu-range-batch | t | CPU range for batch/prompt threads, lo-hi
+cpu-strict-batch | c:0,1 | Strict CPU placement for batch threads
+prio-batch | c:0,1,2,3 | Batch thread priority: 0 normal, 1 medium, 2 high, 3 realtime
+poll-batch | c:0,1 | Use polling for batch threads
+numa | c:distribute,isolate,numactl | NUMA optimizations
+threads-http | t | Threads for HTTP requests (default -1)
+
+## Context, KV cache & slots
+n-predict | t | Tokens to predict (-1 = infinity)
+keep | t | Tokens to keep from the initial prompt (0 default, -1 = all)
+swa-full | f | Use full-size SWA cache
+kv-unified | b | Single unified KV buffer shared across all sequences
+kv-offload | b | KV cache offloading (default enabled)
+kv-unified-per-slot | t | Context limit per parallel slot
+cache-ram | t | Max prompt cache size in MiB (default 8192, -1 no limit, 0 disable)
+cache-idle-slots | b | Save idle slots to the prompt cache (requires cache-ram)
+cache-prompt | b | Prompt caching (default enabled)
+cache-reuse | t | Min chunk size to reuse from cache via KV shifting (default 0)
+ctx-checkpoints | t | Max context checkpoints per slot (default 32)
+checkpoint-min-step | t | Min spacing between context checkpoints in tokens (default 8192)
+context-shift | b | Context shift on infinite text generation (default disabled)
+slot-prompt-similarity | t | How much a prompt must match a slot to reuse it (default 0.10)
+sleep-idle-seconds | t | Idle seconds before the server sleeps (-1 = disabled)
+slot-save-path | p:dir | Directory to save slot KV cache
+
+## Memory, offload & performance
+lazy-mode | c:on,auto,off | On-demand reading of large tensors such as per-layer embeddings (needs mmap)
+repack | b | Weight repacking (default enabled)
+no-host | f | Bypass host buffer, allowing extra buffers
+op-offload | b | Offload host tensor operations to device (default true)
+perf | b | libllama internal performance timings
+check-tensors | f | Check model tensor data for invalid values
+fit | c:on,off | Adjust unset arguments to fit in device memory (default on)
+fit-target | t | Target margin per device in MiB, comma-separated (default 1024)
+fit-ctx | t | Minimum ctx size --fit may set (default 4096)
+moe-cache-mib | t | GPU cache MiB for MoE experts kept in CPU (default 0 = off)
+n-cpu-ffn | t | Keep dense FFN weights of the first N layers in CPU
+cpu-moe | f | Keep all MoE weights in CPU
+warmup | b | Warmup run on start (default enabled)
+cont-batching | b | Continuous batching (default enabled)
+override-kv | t | Override model metadata: KEY=TYPE:VALUE,... (int, float, bool, str)
+override-tensor | t | Override tensor buffer type: pattern=buffer,...
+
+## GPU & devices
+device | t | Comma-separated devices for offloading (none = no offload)
+split-mode | c:none,layer,row,tensor | How to split the model across GPUs (tensor is experimental)
+tensor-split | t | Fraction of the model per GPU, e.g. 3,1
+main-gpu | t | GPU for the model (split-mode none) or intermediate results/KV (row)
+rpc | t | Comma-separated RPC servers (host:port)
+
+## RoPE & YaRN
+rope-scaling | c:none,linear,yarn | RoPE frequency scaling method
+rope-scale | t | RoPE context scaling factor
+rope-freq-base | t | RoPE base frequency (NTK-aware scaling)
+rope-freq-scale | t | RoPE frequency scaling factor (expands context by 1/N)
+yarn-orig-ctx | t | YaRN original context size (0 = model training context)
+yarn-ext-factor | t | YaRN extrapolation mix factor (default -1.00)
+yarn-attn-factor | t | YaRN attention magnitude scale (default -1.00)
+yarn-beta-slow | t | YaRN high correction dim or alpha (default -1.00)
+yarn-beta-fast | t | YaRN low correction dim or beta (default -1.00)
+
+## Sampling extras
+samplers | t | Sampler order separated by ';' (default penalties;dry;top_n_sigma;top_k;typ_p;top_p;min_p;xtc;temperature)
+sampler-seq | t | Simplified sampler sequence (default edskypmxt)
+seed | t | RNG seed (-1 = random)
+ignore-eos | f | Ignore end-of-stream token and keep generating
+top-n-sigma | t | top-n-sigma sampling (-1 = disabled)
+xtc-probability | t | XTC probability (0 = disabled)
+xtc-threshold | t | XTC threshold (default 0.10, 1.0 = disabled)
+typical-p | t | Locally typical sampling p (1.0 = disabled)
+repeat-last-n | t | Last n tokens to penalize (default 64, 0 = disabled)
+frequency-penalty | t | Alpha frequency penalty (0 = disabled)
+dry-multiplier | t | DRY multiplier (0 = disabled)
+dry-base | t | DRY base value (default 1.75)
+dry-allowed-length | t | DRY allowed length (default 2)
+dry-penalty-last-n | t | DRY penalty for the last n tokens (default 64)
+dry-sequence-breaker | t | DRY sequence breaker; "none" for no breakers
+adaptive-target | t | adaptive-p target probability 0.0-1.0 (negative = disabled)
+adaptive-decay | t | adaptive-p decay 0.0-0.99 (default 0.90)
+dynatemp-range | t | Dynamic temperature range (0 = disabled)
+dynatemp-exp | t | Dynamic temperature exponent (default 1.00)
+mirostat | c:0,1,2 | Mirostat sampling: 0 off, 1 Mirostat, 2 Mirostat 2.0
+mirostat-lr | t | Mirostat learning rate eta (default 0.10)
+mirostat-ent | t | Mirostat target entropy tau (default 5.00)
+logit-bias | t | TOKEN_ID(+/-)BIAS, e.g. 15043+1
+grammar | t | BNF-like grammar to constrain generations
+grammar-file | p | File to read grammar from
+json-schema | t | JSON schema to constrain generations
+json-schema-file | p | File containing a JSON schema
+backend-sampling | f | Backend sampling (experimental)
+
+## Chat, reasoning & templates
+chat-template | t | Built-in template name or inline Jinja template
+chat-template-kwargs | t | Extra template params as a JSON object string
+reasoning | c:on,off,auto | Use reasoning/thinking in chat
+reasoning-format | c:none,deepseek,deepseek-legacy,auto | How thought tags are extracted/returned
+reasoning-effort | t | default, minimal, low, medium, high, xhigh or max
+reasoning-budget | t | Thinking token budget: -1 unrestricted, 0 end immediately, N tokens
+reasoning-budget-message | t | Message injected before end-of-thinking when the budget is exhausted
+reasoning-preserve | b | Keep reasoning trace in the full history
+skip-chat-parsing | b | Force a pure content parser
+prefill-assistant | b | Prefill the assistant response if the last message is an assistant message
+escape | b | Process escape sequences (\n, \t, ...) (default true)
+special | f | Output special tokens
+spm-infill | f | Suffix/Prefix/Middle pattern for infill
+reverse-prompt | t | Halt generation at PROMPT
+
+## Multimodal
+mmproj-url | t | URL to a multimodal projector file
+mmproj-auto | b | Use multimodal projector if available (useful with -hf)
+mmproj-device | t | Device for the projector (none = don't offload)
+image-min-tokens | t | Min tokens per image (dynamic-resolution vision models)
+image-max-tokens | t | Max tokens per image (dynamic-resolution vision models)
+mtmd-batch-max-tokens | t | Max image tokens per batch when encoding (default 1024)
+video-fps | t | Target video frame rate (default 4.0)
+video-timestamp-interval | t | Milliseconds between text timestamps (default 5000)
+video-ffmpeg-dir | p:dir | Directory containing ffmpeg and ffprobe
+
+## Model source & adapters
+model-url | t | Model download URL
+hf-repo | t | Hugging Face repo user/model[:quant]
+hf-file | t | Hugging Face model file (overrides quant in hf-repo)
+hf-token | t | Hugging Face access token
+docker-repo | t | Docker Hub model repository [repo/]model[:quant]
+offline | f | Offline mode: use cache only, no network
+lora | p | LoRA adapter path (comma-separated for several)
+lora-scaled | t | LoRA adapters with scale: FNAME:SCALE,...
+lora-init-without-apply | f | Load LoRA adapters without applying them
+control-vector | p | Control vector (comma-separated for several)
+control-vector-scaled | t | Control vectors with scale: FNAME:SCALE,...
+control-vector-layer-range | t | Layer range START END (inclusive)
+lookup-cache-static | p | Static lookup cache for lookup decoding
+lookup-cache-dynamic | p | Dynamic lookup cache for lookup decoding
+
+## Speculative decoding
+spec-type | t | Comma list: none, draft-simple, draft-eagle3, draft-mtp, draft-dflash, draft-dspark, ngram-simple, ngram-map-k, ngram-map-k4v, ngram-mod, ngram-cache
+spec-draft-model | p | Draft model for speculative decoding
+spec-draft-hf | t | Hugging Face repo for the draft model
+spec-draft-n-max | t | Tokens to draft (default 3)
+spec-draft-n-min | t | Minimum draft tokens (default 0)
+spec-draft-n-ubatch | t | Physical batch size of the draft context (0 = same as ubatch)
+spec-draft-p-split | t | Split probability (default 0.10)
+spec-draft-p-min | t | Minimum probability, greedy (default 0.00)
+spec-draft-sampling | c:greedy,probabilistic | How the draft is sampled
+spec-draft-backend-sampling | b | Offload draft sampling to the backend (default enabled)
+spec-draft-ngl | t | Draft model GPU layers: number, auto or all
+spec-draft-device | t | Devices for the draft model
+spec-draft-type-k | c:f32,f16,bf16,q8_0,q4_0,q4_1,iq4_nl,q5_0,q5_1 | KV cache type K for the draft model
+spec-draft-type-v | c:f32,f16,bf16,q8_0,q4_0,q4_1,iq4_nl,q5_0,q5_1 | KV cache type V for the draft model
+spec-draft-threads | t | Draft generation threads
+spec-draft-threads-batch | t | Draft batch/prompt threads
+spec-draft-cpu-mask | t | Draft CPU affinity mask
+spec-draft-cpu-range | t | Draft CPU range lo-hi
+spec-draft-cpu-strict | c:0,1 | Strict CPU placement for draft
+spec-draft-prio | c:0,1,2,3 | Draft thread priority
+spec-draft-poll | c:0,1 | Polling for draft work
+spec-draft-cpu-mask-batch | t | Draft batch CPU affinity mask
+spec-draft-cpu-strict-batch | c:0,1 | Strict placement for draft batch threads
+spec-draft-prio-batch | c:0,1,2,3 | Draft batch thread priority
+spec-draft-poll-batch | c:0,1 | Polling for draft batch work
+spec-draft-override-tensor | t | Tensor buffer overrides for the draft model
+spec-draft-cpu-moe | f | Keep all draft MoE weights in CPU
+spec-draft-n-cpu-moe | t | Keep MoE weights of the first N draft layers in CPU
+spec-ngram-mod-n-min | t | ngram-mod min ngram tokens (default 48)
+spec-ngram-mod-n-max | t | ngram-mod max ngram tokens (default 64)
+spec-ngram-mod-n-match | t | ngram-mod lookup length (default 24)
+spec-ngram-simple-size-n | t | ngram-simple lookup n-gram length (default 12)
+spec-ngram-simple-size-m | t | ngram-simple draft m-gram length (default 48)
+spec-ngram-simple-min-hits | t | ngram-simple minimum hits (default 1)
+spec-ngram-map-k-size-n | t | ngram-map-k lookup n-gram length (default 12)
+spec-ngram-map-k-size-m | t | ngram-map-k draft m-gram length (default 48)
+spec-ngram-map-k-min-hits | t | ngram-map-k minimum hits (default 1)
+
+## Server, API & security
+embeddings | f | Embedding-only mode (dedicated embedding models)
+reranking | f | Enable the reranking endpoint
+pooling | c:none,mean,cls,last,rank | Pooling type for embeddings
+embd-normalize | t | Embedding normalisation (default 2 = euclidean)
+alias | t | Model name aliases for the API, comma-separated
+tags | t | Informational model tags, comma-separated
+reuse-port | f | Allow multiple sockets on the same port
+path | p:dir | Directory to serve static files from
+api-prefix | t | Path prefix the server serves from (no trailing slash)
+cors-origins | t | Allowed CORS origins (default *; 'localhost' reflects localhost only)
+cors-methods | t | Allowed CORS methods
+cors-headers | t | Allowed CORS headers
+cors-credentials | b | Allow CORS credentials (default enabled)
+timeout | t | Read/write timeout in seconds (default 3600)
+sse-ping-interval | t | SSE ping interval in seconds (-1 disabled, default 30)
+api-key | t | API key(s), comma-separated
+api-key-file | p | File with API keys, one per line
+ssl-key-file | p | PEM SSL private key
+ssl-cert-file | p | PEM SSL certificate
+ui-config | t | JSON with default UI settings
+ui-config-file | p | JSON file with default UI settings
+ui-mcp-proxy | b | Experimental MCP CORS proxy (untrusted environments: keep off)
+tools | t | Experimental built-in agent tools (or "all"); keep off in untrusted environments
+tools-runtime | t | Experimental: run tools in docker:<image>, podman:<image> or ssh:<target>
+mcp-servers-json | t | Experimental inline MCP server definitions (JSON)
+agent | b | Enable CORS proxy and all built-in tools (untrusted environments: keep off)
+connect | f | Experimental peer-to-peer tunnel via llama-connect
+connect-code | t | 40-character code for connect
+props | f | Allow changing global properties via POST /props
+slots | b | Slots monitoring endpoint (default enabled)
+media-path | p:dir | Directory for local media files (file:// URLs)
+models-dir | p:dir | Router mode: directory containing models
+models-preset | p | Router mode: INI file with model presets
+models-max | t | Router mode: max models loaded at once (default 4, 0 = unlimited)
+models-autoload | b | Router mode: automatically load models
+
+## Logging
+log-disable | f | Disable logging
+log-file | p | Log to file
+log-jsonl | b | Log as JSONL on stdout (disables colors)
+log-colors | c:on,off,auto | Colored logging
+verbose | f | Verbosity infinity (log everything)
+verbosity | c:0,1,2,3,4,5 | Log threshold: 0 generic, 1 error, 2 warning, 3 info, 4 trace, 5 debug
+log-prefix | b | Prefix in log messages
+log-timestamps | b | Timestamps in log messages
+log-prompts-dir | p:dir | Directory to log prompts into (debugging)
+"""
+
+
+def parse_adv(spec):
+    # 'key | kind[:extra] | help' lines under '## Group' headers; kind: t text, c choice, f flag, b on/off, p path
+    groups = []
+    for ln in spec.strip().splitlines():
+        ln = ln.strip()
+        if not ln:
+            continue
+        if ln.startswith("## "):
+            groups.append((ln[3:], []))
+            continue
+        key, kind, hlp = [p.strip() for p in ln.split("|", 2)]
+        extra = None
+        if ":" in kind:
+            kind, extra = kind.split(":", 1)
+        groups[-1][1].append((key, kind, extra, hlp))
+    return groups
+
+
+ADV_GROUPS = parse_adv(ADV_SPEC)
+
 MCP_CHOICES = ["default", "on", "off"]
 
 ERR_RE = re.compile(r"\b(error|failed|fatal|exception|out of memory|oom|cannot|unable)\b", re.I)
@@ -158,7 +427,8 @@ def parse_kv(line):
 
 
 class IniDoc:
-    # comment-preserving models.ini editor: sections keep their raw lines
+    # comment-preserving models.ini editor. Section = [name, body_lines, comment_lines];
+    # comment_lines = the contiguous '#' lines directly above the [header] (belong to that section)
     def __init__(self, text=""):
         if "\r\n" in text:
             self.nl = "\r\n"
@@ -171,13 +441,23 @@ class IniDoc:
         for ln in text.splitlines():
             m = SEC_RE.match(ln)
             if m:
+                com = self._take_comment(cur)
                 cur = []
-                self.secs.append([m.group(1).strip(), cur])
+                self.secs.append([m.group(1).strip(), cur, com])
             else:
                 cur.append(ln)
 
+    @staticmethod
+    def _take_comment(lines):
+        i = len(lines)
+        while i > 0 and lines[i - 1].lstrip().startswith("#"):
+            i -= 1
+        com = lines[i:]
+        del lines[i:]
+        return com
+
     def names(self):
-        return [n for n, _ in self.secs]
+        return [s[0] for s in self.secs]
 
     def has(self, name):
         return name in self.names()
@@ -191,6 +471,15 @@ class IniDoc:
     def body(self, name):
         s = self._sec(name)
         return list(s[1]) if s else []
+
+    def comment(self, name):
+        s = self._sec(name)
+        return list(s[2]) if s else []
+
+    def set_comment(self, name, lines):
+        s = self._sec(name)
+        if s:
+            s[2][:] = list(lines)
 
     def dict(self, name):
         d = {}
@@ -211,12 +500,13 @@ class IniDoc:
             lines.append("")
         s[1][:] = lines
 
-    def add(self, name, lines):
+    def add(self, name, lines, comment=None):
         lines = list(lines)
         while lines and not lines[-1].strip():
             lines.pop()
+        com = list(comment or [])
         if name == GLOBAL:
-            self.secs.insert(0, [name, lines + ([""] if self.secs else [])])
+            self.secs.insert(0, [name, lines + ([""] if self.secs else []), com])
             return
         if self.secs:
             prev = self.secs[-1][1]
@@ -224,7 +514,7 @@ class IniDoc:
                 prev.append("")
         elif self.pre and self.pre[-1].strip():
             self.pre.append("")
-        self.secs.append([name, lines])
+        self.secs.append([name, lines, com])
 
     def remove(self, name):
         s = self._sec(name)
@@ -242,10 +532,54 @@ class IniDoc:
 
     def dump(self):
         out = list(self.pre)
-        for name, body in self.secs:
+        for name, body, com in self.secs:
+            out += com
             out.append(f"[{name}]")
             out += body
         return self.nl.join(out) + self.nl
+
+
+class Tooltip:
+    def __init__(self, widgets, T, font, delay=450, wrap=560):
+        self.T, self.font, self.delay, self.wrap = T, font, delay, wrap
+        self.text, self.tip, self.job, self.w = "", None, None, widgets[0]
+        for w in widgets:
+            w.bind("<Enter>", self._enter, add="+")
+            w.bind("<Leave>", self.hide, add="+")
+            w.bind("<ButtonPress>", self.hide, add="+")
+
+    def _enter(self, e):
+        self.hide()
+        if self.text:
+            self.job = self.w.after(self.delay, lambda x=e.x_root, y=e.y_root: self._show(x, y))
+
+    def _show(self, x, y):
+        self.job = None
+        try:
+            tip = tk.Toplevel(self.w)
+            tip.wm_overrideredirect(True)
+            tip.attributes("-topmost", True)
+            tk.Label(tip, text=self.text, justify="left", wraplength=self.wrap, bg=self.T["panel2"],
+                     fg=self.T["text"], font=self.font, padx=10, pady=6, highlightthickness=1,
+                     highlightbackground=self.T["border"]).pack()
+            tip.geometry(f"+{x + 16}+{y + 18}")
+            self.tip = tip
+        except tk.TclError:
+            self.tip = None
+
+    def hide(self, _e=None):
+        if self.job:
+            try:
+                self.w.after_cancel(self.job)
+            except Exception:
+                pass
+            self.job = None
+        if self.tip:
+            try:
+                self.tip.destroy()
+            except Exception:
+                pass
+            self.tip = None
 
 
 DEFAULT_SRV = {"server_exe": "llama-server.exe", "extra_args": "", "open_browser": "0", "stop_on_exit": "1",
@@ -355,6 +689,14 @@ class ModelItem(tk.Frame):
             w.bind("<Leave>", self._leave)
             w.bind("<Button-1>", lambda e: on_click(self.name))
             w.bind("<Button-3>", lambda e: on_menu(self.name, e))
+        self.tooltip = Tooltip(self.parts + (self.bar,), T, fonts["small"])
+
+    def set_tip(self, text):
+        self.tooltip.text = text
+
+    def destroy(self):
+        self.tooltip.hide()
+        super().destroy()
 
     def _paint(self):
         T = self.T
@@ -393,6 +735,7 @@ class ServerPanel(tk.Frame):
         self.selected = None
         self.dirty = False
         self._loading = False
+        self._comment_orig = ""
         self.q = queue.Queue()
         self.restart = set()
         self.pending_start = None
@@ -401,6 +744,7 @@ class ServerPanel(tk.Frame):
         self.doc = IniDoc()
         self.ini_path, self.ini_mtime, self.ini_err = "", None, None
         self.fvars, self.hints, self.flagvars, self.svars = {}, {}, {}, {}
+        self.advvars, self.adv_hints, self.adv_groups = {}, {}, []
         self.mcp_var = tk.StringVar(value="default")
         self._flash_id = None
         self._build()
@@ -550,9 +894,173 @@ class ServerPanel(tk.Frame):
         self.Btn(bar, "\u2398 Copy command", self.copy_command, T["panel2"], T["hover"], font=F["ui"]).pack(side="left", padx=6)
         return page
 
+    def _config_wheel(self, e):
+        w = self.winfo_containing(e.x_root, e.y_root)
+        if w is None or isinstance(w, tk.Text):
+            return
+        for cv, inner in ((self.cfg_canvas, self.cfg_inner), (self.adv_canvas, self.adv_inner)):
+            if cv.winfo_ismapped() and str(w).startswith(str(cv)) and inner.winfo_reqheight() > cv.winfo_height():
+                cv.yview_scroll(int(-e.delta / 120), "units")
+                return
+
+    def _adv_wheel(self, e):
+        # stops ttk comboboxes from changing value on wheel; scrolls the page instead
+        self._config_wheel(e)
+        return "break"
+
+    def _cfg_sub(self, name):
+        self.cfg_sub = name
+        for n, b in self.cfg_sub_btns.items():
+            act = n == name
+            b._bg = self.T["accent_bg"] if act else self.T["panel2"]
+            b.config(bg=b._bg, fg="white" if act else self.T["text"])
+        if name == "main":
+            self.adv_page.grid_remove()
+            self.cfg_canvas.grid()
+            self.cfg_vs.grid()
+        else:
+            self.cfg_canvas.grid_remove()
+            self.cfg_vs.grid_remove()
+            self.adv_page.grid(row=1, column=0, columnspan=2, sticky="nsew")
+
+    def _adv_browse(self, key, kind):
+        cur = unquote(self.advvars[key][1].get())
+        init = os.path.dirname(join_base(cur, self.base_dir())) if cur else self.base_dir()
+        init = init if os.path.isdir(init) else self.base_dir()
+        p = (filedialog.askdirectory(title=f"Select {key}", initialdir=init) if kind == "dir"
+             else filedialog.askopenfilename(title=f"Select {key}", initialdir=init))
+        if p:
+            self.advvars[key][1].set(os.path.normpath(p))
+
+    def _adv_cell(self, parent, key, kind, extra, hlp):
+        T, F = self.T, self.F
+        cell = tk.Frame(parent, bg=T["panel"])
+        hd = tk.Frame(cell, bg=T["panel"])
+        hd.pack(fill="x")
+        lbl = tk.Label(hd, text=key, bg=T["panel"], fg=T["muted"], font=F["small"], anchor="w")
+        lbl.pack(side="left")
+        hint = tk.Label(hd, text="", bg=T["panel"], fg=T["warn"], font=F["small"], anchor="e")
+        hint.pack(side="right")
+        var = tk.StringVar()
+        if kind == "f":
+            w = tk.Checkbutton(cell, text="enable", variable=var, onvalue="true", offvalue="", bg=T["panel"],
+                               fg=T["text"], selectcolor=T["panel2"], activebackground=T["panel"],
+                               activeforeground=T["text"], font=F["ui"], bd=0, highlightthickness=0,
+                               cursor="hand2", anchor="w")
+            w.pack(fill="x")
+        elif kind in ("b", "c"):
+            vals = ["", "on", "off"] if kind == "b" else [""] + [x.strip() for x in (extra or "").split(",")]
+            w = self._combo(cell, var, vals, state="readonly" if kind == "b" else "normal")
+            w.pack(fill="x", ipady=2)
+            w.bind("<MouseWheel>", self._adv_wheel)
+        elif kind == "p":
+            line = tk.Frame(cell, bg=T["panel"])
+            line.pack(fill="x")
+            self._entry(line, var).pack(side="left", fill="x", expand=True, ipady=3)
+            self.Btn(line, "\u2026", lambda k=key, x=extra: self._adv_browse(k, x), T["panel2"], T["hover"],
+                     font=F["ui"], padx=8, pady=2).pack(side="left", padx=(4, 0))
+        else:
+            self._entry(cell, var).pack(fill="x", ipady=3)
+        var.trace_add("write", self._on_change)
+        self.advvars[key] = (kind, var)
+        self.adv_hints[key] = hint
+        Tooltip([lbl], T, F["small"]).text = f"--{key}\n{hlp}"
+        return cell
+
+    def _build_advanced(self, parent):
+        T, F = self.T, self.F
+        page = tk.Frame(parent, bg=T["bg"])
+        page.grid_rowconfigure(1, weight=1)
+        page.grid_columnconfigure(0, weight=1)
+        top = tk.Frame(page, bg=T["bg"])
+        top.grid(row=0, column=0, columnspan=2, sticky="ew", padx=18, pady=(0, 6))
+        tk.Label(top, text="Filter", bg=T["bg"], fg=T["muted"], font=F["small_b"]).pack(side="left", padx=(0, 8))
+        self.adv_filter = tk.StringVar()
+        self._entry(top, self.adv_filter).pack(side="left", fill="x", expand=True, ipady=3)
+        self.adv_count = tk.Label(top, text="", bg=T["bg"], fg=T["muted"], font=F["small"])
+        self.adv_count.pack(side="left", padx=10)
+        cv = tk.Canvas(page, bg=T["bg"], highlightthickness=0, bd=0)
+        vs = ttk.Scrollbar(page, orient="vertical", command=cv.yview)
+        cv.configure(yscrollcommand=vs.set)
+        cv.grid(row=1, column=0, sticky="nsew")
+        vs.grid(row=1, column=1, sticky="ns")
+        inner = tk.Frame(cv, bg=T["bg"])
+        win = cv.create_window((0, 0), window=inner, anchor="nw")
+
+        def fit(_e=None):
+            cv.itemconfig(win, width=cv.winfo_width())
+            cv.configure(scrollregion=cv.bbox("all"))
+
+        cv.bind("<Configure>", fit)
+        inner.bind("<Configure>", fit)
+        self.adv_canvas, self.adv_inner = cv, inner
+        for title, items in ADV_GROUPS:
+            gf = tk.Frame(inner, bg=T["panel"], highlightthickness=1, highlightbackground=T["border"])
+            tk.Label(gf, text=title.upper(), bg=T["panel"], fg=T["accent"], font=F["small_b"],
+                     anchor="w").pack(fill="x", padx=12, pady=(8, 4))
+            gg = tk.Frame(gf, bg=T["panel"])
+            gg.pack(fill="x", padx=12, pady=(0, 6))
+            for c in range(3):
+                gg.grid_columnconfigure(c, weight=1, uniform="a")
+            cells = []
+            for key, kind, extra, hlp in items:
+                cells.append((key, self._adv_cell(gg, key, kind, extra, hlp), (key + " " + hlp).lower()))
+            self.adv_groups.append({"frame": gf, "cells": cells})
+        self.adv_filter.trace_add("write", lambda *a: self._adv_layout())
+        self._adv_layout()
+        return page
+
+    def _adv_layout(self):
+        q = self.adv_filter.get().strip().lower()
+        shown = 0
+        for g in self.adv_groups:
+            g["frame"].pack_forget()
+            for _k, cell, _t in g["cells"]:
+                cell.grid_forget()
+        for g in self.adv_groups:
+            vis = [c for c in g["cells"] if not q or q in c[2]]
+            if not vis:
+                continue
+            g["frame"].pack(fill="x", padx=18, pady=(0, 10))
+            for i, (_k, cell, _t) in enumerate(vis):
+                cell.grid(row=i // 3, column=i % 3, sticky="ew", padx=(0 if i % 3 == 0 else 8, 0), pady=(0, 6))
+            shown += len(vis)
+        self.adv_count.config(text=f"{shown} options")
+        self.adv_canvas.yview_moveto(0)
+
     def _build_config(self):
         T, F = self.T, self.F
-        page = tk.Frame(self, bg=T["bg"])
+        outer = tk.Frame(self, bg=T["bg"])
+        outer.grid_rowconfigure(1, weight=1)
+        outer.grid_columnconfigure(0, weight=1)
+        cv = tk.Canvas(outer, bg=T["bg"], highlightthickness=0, bd=0)
+        vs = ttk.Scrollbar(outer, orient="vertical", command=cv.yview)
+        cv.configure(yscrollcommand=vs.set)
+        cv.grid(row=1, column=0, sticky="nsew")
+        vs.grid(row=1, column=1, sticky="ns")
+        page = tk.Frame(cv, bg=T["bg"])
+        win = cv.create_window((0, 0), window=page, anchor="nw")
+
+        def fit(_e=None):
+            # inner page fills the canvas width; grows to canvas height so OTHER PARAMETERS still stretches
+            cv.itemconfig(win, width=cv.winfo_width(), height=max(cv.winfo_height(), page.winfo_reqheight()))
+            cv.configure(scrollregion=cv.bbox("all"))
+            if page.winfo_reqheight() <= cv.winfo_height():
+                cv.yview_moveto(0)
+
+        cv.bind("<Configure>", fit)
+        page.bind("<Configure>", fit)
+        self.cfg_outer, self.cfg_canvas, self.cfg_inner, self.cfg_vs = outer, cv, page, vs
+        strip = tk.Frame(outer, bg=T["bg"])
+        strip.grid(row=0, column=0, columnspan=2, sticky="ew", padx=18, pady=(0, 6))
+        self.cfg_sub_btns = {}
+        for n, text in (("main", "General"), ("advanced", "Advanced")):
+            b = self.Btn(strip, text, lambda n=n: self._cfg_sub(n), T["panel2"], T["hover"], font=F["ui"])
+            b.pack(side="left", padx=(0, 6))
+            self.cfg_sub_btns[n] = b
+        self.adv_page = self._build_advanced(outer)
+        self._cfg_sub("main")
+        cv.bind_all("<MouseWheel>", self._config_wheel, add="+")
         page.grid_rowconfigure(2, weight=1)
         page.grid_columnconfigure(0, weight=1)
         card = tk.Frame(page, bg=T["panel"], highlightthickness=1, highlightbackground=T["border"])
@@ -566,6 +1074,22 @@ class ServerPanel(tk.Frame):
             hint = tk.Label(hd, text="", bg=T["panel"], fg=T["warn"], font=F["small"], anchor="e")
             hint.pack(side="right")
             self.hints[key] = hint
+
+        crow = tk.Frame(card, bg=T["panel"])
+        crow.pack(fill="x", padx=12, pady=(10, 0))
+        tk.Label(crow, text="Comment  \u00B7  '#' lines above the [section] in models.ini  \u00B7  shown as tooltip in the model list",
+                 bg=T["panel"], fg=T["muted"], font=F["small"], anchor="w").pack(fill="x")
+        cbox = tk.Frame(crow, bg=T["term"], highlightthickness=1, highlightbackground=T["border"])
+        cbox.pack(fill="x")
+        self.comment = tk.Text(cbox, bg=T["term"], fg=T["text"], insertbackground=T["text"], font=F["mono_s"],
+                               wrap="word", relief="flat", bd=0, padx=8, pady=4, height=4, undo=True,
+                               selectbackground="#264f78")
+        csy = ttk.Scrollbar(cbox, orient="vertical", command=self.comment.yview)
+        self.comment.config(yscrollcommand=csy.set)
+        csy.pack(side="right", fill="y")
+        self.comment.pack(side="left", fill="x", expand=True)
+        for ev in ("<KeyRelease>", "<<Paste>>", "<<Cut>>", "<<Undo>>", "<<Redo>>"):
+            self.comment.bind(ev, lambda e: self.after(1, self._on_comment))
 
         for key, label in PATH_FIELDS:
             row = tk.Frame(card, bg=T["panel"])
@@ -600,6 +1124,14 @@ class ServerPanel(tk.Frame):
         hint = tk.Label(fl, text="", bg=T["panel"], fg=T["warn"], font=F["small"])
         hint.pack(side="left", padx=(6, 22))
         self.hints["mcp"] = hint
+        tk.Label(fl, text="Load mode", bg=T["panel"], fg=T["muted"], font=F["small"]).pack(side="left", padx=(0, 6))
+        lm = tk.StringVar()
+        self.fvars["load-mode"] = lm
+        lm.trace_add("write", self._on_change)
+        self._combo(fl, lm, [""] + LOAD_MODES, width=12, state="readonly").pack(side="left")
+        lh = tk.Label(fl, text="", bg=T["panel"], fg=T["warn"], font=F["small"])
+        lh.pack(side="left", padx=(6, 22))
+        self.hints["load-mode"] = lh
         for key, label in FLAG_FIELDS:
             var = tk.IntVar()
             self.flagvars[key] = var
@@ -608,7 +1140,7 @@ class ServerPanel(tk.Frame):
                            activebackground=T["panel"], activeforeground=T["text"], font=F["ui"], bd=0,
                            highlightthickness=0, cursor="hand2").pack(side="left", padx=(0, 16))
 
-        tk.Label(page, text="OTHER PARAMETERS  \u00B7  one 'key = value' per line, flags without dashes (e.g. temp = 0.7, cache-reuse = 256). ; or # starts a comment",
+        tk.Label(page, text="OTHER PARAMETERS  \u00B7  one 'key = value' per line, flags without dashes (e.g. cache-reuse = 256, ctx-checkpoints = 32). ; or # starts a comment",
                  bg=T["bg"], fg=T["muted"], font=F["small_b"], anchor="w").grid(row=1, column=0, sticky="ew", padx=18, pady=(10, 4))
         ex = tk.Frame(page, bg=T["term"], highlightthickness=1, highlightbackground=T["border"])
         ex.grid(row=2, column=0, sticky="nsew", padx=18)
@@ -631,8 +1163,8 @@ class ServerPanel(tk.Frame):
                                padx=10, pady=6, height=4, state="disabled", selectbackground="#264f78")
         self.preview.pack(fill="x")
 
-        bar = tk.Frame(page, bg=T["bg"])
-        bar.grid(row=5, column=0, sticky="ew", padx=18, pady=10)
+        bar = tk.Frame(outer, bg=T["bg"])
+        bar.grid(row=2, column=0, columnspan=2, sticky="ew", padx=18, pady=10)
         self.btn_save = self.Btn(bar, "\U0001F4BE Save  Ctrl+S", self.save, T["accent_bg"], "#388bfd", fg="white", font=F["bold"])
         self.btn_save.pack(side="left")
         for text, cmd in (("\u21BA Revert", self.revert), ("\u2750 Duplicate", self.duplicate), ("\u270E Rename", self.rename),
@@ -640,7 +1172,7 @@ class ServerPanel(tk.Frame):
             self.Btn(bar, text, cmd, T["panel2"], T["hover"], font=F["ui"]).pack(side="left", padx=(6, 0))
         self.dirty_lbl = tk.Label(bar, text="", bg=T["bg"], fg=T["warn"], font=F["bold"])
         self.dirty_lbl.pack(side="right")
-        return page
+        return outer
 
     def _build_settings(self):
         T, F = self.T, self.F
@@ -770,10 +1302,14 @@ class ServerPanel(tk.Frame):
             return r.state
         return "idle"
 
+    def comment_tip(self, name):
+        return "\n".join(re.sub(r"^\s*#\s?", "", l) for l in self.doc.comment(name)).strip()
+
     def _refresh_item(self, name):
         it = self.items.get(name)
         if not it:
             return
+        it.set_tip(self.comment_tip(name))
         if name == GLOBAL:
             it.set_info("applies to every model", "idle")
             return
@@ -952,14 +1488,32 @@ class ServerPanel(tk.Frame):
         d = self.doc.dict(name) if has else {}
         for key, var in self.fvars.items():
             var.set(d.get(key, ""))
+        if not d.get("load-mode"):  # migrate legacy mlock / no-mmap checkboxes
+            ml = "mlock" in d and (d["mlock"] == "" or d["mlock"].lower() in TRUE)
+            nm = "no-mmap" in d and (d["no-mmap"] == "" or d["no-mmap"].lower() in TRUE)
+            if ml or nm:
+                self.fvars["load-mode"].set("mlock" if (ml and nm) else ("mmap+mlock" if ml else "none"))
         for key, var in self.flagvars.items():
             var.set(1 if key in d and (d[key].lower() in TRUE or d[key] == "") else 0)
+        for key, (kind, var) in self.advvars.items():
+            v = d.get(key)
+            if v is None:
+                var.set("")
+                continue
+            if kind in ("b", "f"):
+                on = v == "" or v.lower() in TRUE
+                off = v.lower() in FALSE
+                var.set(("on" if on else ("off" if off else "")) if kind == "b" else ("true" if on else ""))
+            else:
+                var.set(v)
         mv = unquote(d.get("mcp", "")).lower()
         self.mcp_var.set("on" if mv and mv in TRUE else ("off" if mv and mv in FALSE else "default"))
         keep = []
         for ln in (self.doc.body(name) if has else []):
             kv = parse_kv(ln)
-            if kv and (kv[0] in self.fvars or kv[0] == "mcp"):
+            if kv and (kv[0] in self.fvars or kv[0] == "mcp" or kv[0] in LEGACY_LOAD):
+                continue
+            if kv and kv[0] in self.advvars:
                 continue
             if kv and kv[0] in self.flagvars and (kv[1].lower() in TRUE or kv[1] == ""):
                 continue
@@ -971,9 +1525,25 @@ class ServerPanel(tk.Frame):
         self.extra.delete("1.0", "end")
         self.extra.insert("1.0", "\n".join(keep))
         self.extra.edit_reset()
+        self.comment.delete("1.0", "end")
+        self.comment.insert("1.0", "\n".join(self.doc.comment(name)) if has else "")
+        self.comment.edit_reset()
+        self._comment_orig = "\n".join(self._comment_lines())
         self._loading = False
         self.dirty = False
         self._after_change()
+
+    def _comment_lines(self):
+        out = []
+        for ln in self.comment.get("1.0", "end").splitlines():
+            s = ln.strip()
+            if s:
+                out.append(s if s.startswith("#") else "# " + s)
+        return out
+
+    def _on_comment(self):
+        if not self._loading and "\n".join(self._comment_lines()) != self._comment_orig:
+            self._on_change()
 
     def _form_lines(self):
         lines = []
@@ -983,6 +1553,14 @@ class ServerPanel(tk.Frame):
                 lines.append(f"{key} = {v}")
         if self.mcp_var.get() in ("on", "off"):
             lines.append(f"mcp = {self.mcp_var.get()}")
+        for key, (kind, var) in self.advvars.items():
+            v = var.get().strip()
+            if kind == "b":
+                v = {"on": "true", "off": "false"}.get(v, "")
+            elif kind == "f":
+                v = "true" if v else ""
+            if v:
+                lines.append(f"{key} = {v}")
         for key, var in self.flagvars.items():
             if var.get():
                 lines.append(f"{key} = true")
@@ -1013,6 +1591,9 @@ class ServerPanel(tk.Frame):
                 continue
             v = self.fvars[key].get().strip() if key in self.fvars else ""
             lbl.config(text=f"\u21B3 global: {g[key]}" if (not v and key in g and self.selected != GLOBAL) else "")
+        for key, lbl in self.adv_hints.items():
+            cur = self.advvars[key][1].get().strip()
+            lbl.config(text=f"\u21B3 global: {g[key]}" if (not cur and key in g and self.selected != GLOBAL) else "")
         self.dirty_lbl.config(text="\u25CF unsaved changes" if self.dirty else "")
         self.btn_save._bg = self.T["accent_bg"] if self.dirty else self.T["panel2"]
         self.btn_save.config(bg=self.btn_save._bg)
@@ -1031,8 +1612,10 @@ class ServerPanel(tk.Frame):
     def _browse(self, key):
         cur = unquote(self.fvars[key].get())
         init = os.path.dirname(join_base(cur, self.base_dir())) if cur else (self.s.get("gguf_dir") or self.base_dir())
+        ft = ([("Jinja template", "*.jinja *.jinja2 *.txt"), ("All files", "*.*")] if key == "chat-template-file"
+              else [("GGUF", "*.gguf"), ("All files", "*.*")])
         p = filedialog.askopenfilename(title=f"Select {key}", initialdir=init if os.path.isdir(init) else self.base_dir(),
-                                       filetypes=[("GGUF", "*.gguf"), ("All files", "*.*")])
+                                       filetypes=ft)
         if p:
             self.fvars[key].set(p)
             self._remember_dir(p)
@@ -1116,7 +1699,7 @@ class ServerPanel(tk.Frame):
     # ---------- editing actions ----------
     def _collect(self):
         lines, extra = self._form_lines()
-        managed = set(self.fvars) | set(self.flagvars) | {"mcp"}
+        managed = set(self.fvars) | set(self.flagvars) | set(self.advvars) | {"mcp"}
         for ln in extra:
             kv = parse_kv(ln)
             if kv and kv[0] in managed:
@@ -1136,8 +1719,10 @@ class ServerPanel(tk.Frame):
             messagebox.showerror("Cannot save", err)
             return False
         self.doc.set_body(name, lines)
+        self.doc.set_comment(name, self._comment_lines())
         if not self._write_ini():
             return False
+        self._comment_orig = "\n".join(self._comment_lines())
         self.dirty = False
         self._after_change()
         self._refresh_header()
@@ -1207,7 +1792,7 @@ class ServerPanel(tk.Frame):
         if self.dirty and not self.save():
             return
         new = self._unique(name + "-copy")
-        self.doc.add(new, [ln for ln in self.doc.body(name)])
+        self.doc.add(new, [ln for ln in self.doc.body(name)], self.doc.comment(name))
         if self._write_ini():
             self._after_structure(new)
             self.flash(f"Duplicated to [{new}]")
