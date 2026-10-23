@@ -48,7 +48,10 @@ class App(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title(f"llama-server runner {VERSION}")
-        self.geometry("1400x800")
+        w, h = 1400, 860
+        x = (self.winfo_screenwidth() - w) // 2
+        y = (self.winfo_screenheight() - h) // 3
+        self.geometry(f"{w}x{h}+{x}+{y}")
         self.minsize(900, 600)
         self.configure(bg=T["bg"])
         global UI, MONO
