@@ -9,7 +9,7 @@ NO_WINDOW = 0x08000000 if IS_WIN else 0
 
 NEW_GROUP = 0x00000200 if IS_WIN else 0
 
-SETTINGS_FILE = "settings.ini"
+SETTINGS_FILE = "config/settings.ini"
 
 GLOBAL = "*"
 

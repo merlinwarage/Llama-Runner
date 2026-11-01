@@ -1,6 +1,7 @@
 """Settings tab (split from server_panel.py)"""
 import os
 import shlex
+import subprocess
 import tkinter as tk
 from bench_panel import resolve_path
 from tkinter import filedialog
@@ -44,6 +45,7 @@ class SettingsMixin:
         bar = tk.Frame(page, bg=T["bg"])
         bar.grid(row=1, column=0, sticky="ew", padx=18, pady=12)
         self.Btn(bar, "\U0001F4BE Apply & save", self.apply_settings, T["accent_bg"], "#388bfd", fg="white", font=F["bold"]).pack(side="left")
+        self.Btn(bar, "\u21BB Update llama-server", self._update_llama_server, T["panel"], T["hover"], font=F["ui"]).pack(side="left", padx=(6, 0))
         tk.Label(bar, text="checkboxes save instantly; paths need Apply \u00B7 " + self.settings_path, bg=T["bg"], fg=T["muted"], font=F["small"]).pack(side="left", padx=10)
         tk.Label(page, justify="left", anchor="w", bg=T["bg"], fg=T["muted"], font=F["small"], text=(
             "Only one model runs at a time: starting another stops the running one first.\n"
@@ -100,3 +102,13 @@ class SettingsMixin:
                 self.on_ini_changed(self.ini_path)
         self._after_change()
         self.flash("Settings saved")
+
+    def _update_llama_server(self):
+        ps_cmd = (
+            f'powershell -ExecutionPolicy Bypass -File "{os.path.join(self.app_dir, "llama-server", "update-llama-server.ps1")}"'
+        )
+        try:
+            subprocess.Popen(ps_cmd, shell=True, creationflags=subprocess.CREATE_NEW_CONSOLE)
+            self.flash("Update started (check console)")
+        except Exception as e:
+            messagebox.showerror("Update failed", str(e))

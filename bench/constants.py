@@ -4,7 +4,7 @@ import re
 
 NO_WINDOW = 0x08000000
 
-SETTINGS_FILE = "settings.ini"
+SETTINGS_FILE = "config/settings.ini"
 
 FLAGS = [("threads", "-t"), ("n-gpu-layers", "-ngl"), ("n-cpu-moe", "-ncmoe"), ("fa", "-fa"),
          ("cache-type-k", "-ctk"), ("cache-type-v", "-ctv"), ("batch-size", "-b"),

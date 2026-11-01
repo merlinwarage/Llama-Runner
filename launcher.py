@@ -1,4 +1,4 @@
-import os, sys, traceback
+import os, sys, traceback, subprocess
 import tkinter as tk
 from tkinter import messagebox, ttk
 import tkinter.font as tkfont
@@ -6,7 +6,7 @@ import tkinter.font as tkfont
 from bench_panel import BenchPanel
 from server_panel import ServerPanel
 
-VERSION = "v9.4.0"
+VERSION = "v9.5.0"
 APP_DIR = os.path.dirname(os.path.abspath(sys.executable if getattr(sys, "frozen", False) else __file__))
 LOG = os.path.join(APP_DIR, "runner.log")
 
@@ -64,6 +64,12 @@ class App(tk.Tk):
         self._bind_keys()
         self.after(100, lambda: dark_titlebar(self))
         self.protocol("WM_DELETE_WINDOW", self.on_close)
+        ver_file = os.path.join(APP_DIR, ".llama_cpp-version")
+        if not os.path.exists(ver_file):
+            ps_cmd = (
+                f'powershell -ExecutionPolicy Bypass -File "{os.path.join(APP_DIR, "llama-server", "update-llama-server.ps1")}"'
+            )
+            subprocess.Popen(ps_cmd, shell=True, creationflags=subprocess.CREATE_NEW_CONSOLE)
 
     def _style(self):
         st = ttk.Style(self)
