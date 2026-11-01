@@ -29,19 +29,20 @@ It is a single small Tkinter app with no third-party runtime dependencies.
 
 ## Features
 
-|                              |                                                                                                                                                                                                                  |
-| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Models from `models.ini`** | Each `[section]` is a model. `[*]` holds defaults every model inherits. Same format as llama-server's router-mode presets (keys are flags without the leading dashes).                                           |
-| **Built-in config editor**   | Form fields for the common flags (context, GPU layers, `n-cpu-moe`, threads, batch/ubatch, flash-attn, K/V cache types, parallel, host, port, mmproj, jinja, mlock, …) plus a free-text box for everything else. |
-| **Live command preview**     | See the exact command line, with global defaults merged in, before you start. Inherited values are hinted (`↳ global: 32768`).                                                                                   |
-| **One-key control**          | `F5` start / restart, `Shift+F5` stop, `F6` open WebUI.                                                                                                                                                          |
-| **One model at a time**      | Starting a model automatically stops the running one first, then launches the new one once the old process has exited. Handy on a single GPU.                                                                    |
-| **Auto-open WebUI**          | Optional. Opens the browser when the server is ready (detected from the log line or a `/health` check, whichever comes first).                                                                                   |
-| **MCP support**              | Global `--mcp-servers-config` path and "Use MCP" switch, with a per-model override (`default` / `on` / `off`).                                                                                                   |
-| **Speed readout**            | Prompt-processing and generation tokens/s parsed from the server log and shown in the header.                                                                                                                    |
-| **Benchmark menu**           | `llama-bench` runner with sweeps (batch, KV cache, threads, MoE) and Markdown reports, using the same `models.ini`.                                                                                              |
-| **Safe editing**             | Comments and layout in `models.ini` are preserved; a `models.ini.bak` is written on every save; edits made in an external editor are picked up when the window regains focus.                                    |
-| **Quality of life**          | Model filter with arrow-key switching, context menu, duplicate / rename / delete, "New from GGUF…" file picker, log copy/save, dark theme with dark title bar.                                                   |
+|                              |                                                                                                                                                                                                                                                         |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Models from `models.ini`** | Each `[section]` is a model. `[*]` holds defaults every model inherits. Same format as llama-server's router-mode presets (keys are flags without the leading dashes).                                                                                  |
+| **Built-in config editor**   | Form fields for the common flags (context, GPU layers, `n-cpu-moe`, threads, batch/ubatch, flash-attn, K/V cache types, parallel, host, port, mmproj, jinja, mlock, …) plus a free-text box for everything else.                                        |
+| **Live command preview**     | See the exact command line, with global defaults merged in, before you start. Inherited values are hinted (`↳ global: 32768`).                                                                                                                          |
+| **One-key control**          | `F5` start / restart, `Shift+F5` stop, `F6` open WebUI.                                                                                                                                                                                                 |
+| **One model at a time**      | Starting a model automatically stops the running one first, then launches the new one once the old process has exited. Handy on a single GPU.                                                                                                           |
+| **Auto-open WebUI**          | Optional. Opens the browser when the server is ready (detected from the log line or a `/health` check, whichever comes first).                                                                                                                          |
+| **MCP support**              | Global `--mcp-servers-config` path and "Use MCP" switch, with a per-model override (`default` / `on` / `off`).                                                                                                                                          |
+| **llama.cpp auto-update**    | On first run (if no `.llama_cpp-version` file exists), the bundled `update-llama-server.ps1` runs in a background console to fetch the latest CUDA-matched Windows release from GitHub. A **Update llama-server** button in Settings runs it on demand. |
+| **Speed readout**            | Prompt-processing and generation tokens/s parsed from the server log and shown in the header.                                                                                                                                                           |
+| **Benchmark menu**           | `llama-bench` runner with sweeps (batch, KV cache, threads, MoE) and Markdown reports, using the same `models.ini`.                                                                                                                                     |
+| **Safe editing**             | Comments and layout in `models.ini` are preserved; a `models.ini.bak` is written on every save; edits made in an external editor are picked up when the window regains focus.                                                                           |
+| **Quality of life**          | Model filter with arrow-key switching, context menu, duplicate / rename / delete, "New from GGUF…" file picker, log copy/save, dark theme with dark title bar.                                                                                          |
 
 ## Quick start
 
@@ -67,11 +68,22 @@ See [Building from source](#building-from-source).
 
 ### First run
 
-1. Open the **Settings** tab and set the path to your `llama-server.exe`. [https://github.com/ggml-org/llama.cpp](https://github.com/ggml-org/llama.cpp)
+1. Open the **Settings** tab and set the path to your `llama-server.exe`. [https://github.com/ggml-org/llama.cpp](https://github.com/ggml-org/llama.cpp) (or use the bundled latest version)
 2. Point **Models config** at your `models.ini` (or use the bundled example).
 3. Select a model in the sidebar and press **F5**.
 
 > No models yet? Click **＋ New from GGUF…**, pick a `.gguf` file, and a section is created for you.
+
+## llama.cpp auto-update
+
+The app bundles a PowerShell script (`update-llama-server.ps1`) that fetches the latest `llama.cpp` Windows CUDA release from GitHub and extracts it next to the exe.
+
+- **Automatic**: On first run, if the version marker file (`.llama_cpp-version`) is missing, the script runs in a background console window.
+- **Manual**: Open **Settings** → **Update llama-server** button to run it anytime.
+- The script detects your CUDA version, downloads the matching `llama-*-bin-win-cuda-<ver>-x64.zip` (and the `cudart` runtime), and writes a version file so it skips re-downloads on subsequent starts.
+- Requires internet access and allows GitHub API calls (rate limited to 50 req/h without a token; set `GITHUB_TOKEN` env var for higher limits).
+
+The downloaded `llama-server.exe`, `llama.dll`, and CUDA runtime binaries end up in the llama-server folder beside of the exe, so the app finds them automatically.
 
 ## ⚠️ Antivirus warning
 
@@ -248,6 +260,7 @@ server_panel.py         llama-server runner: models.ini editor, process control,
 bench_panel.py          llama-bench menu (sweeps + Markdown reports)
 build.bat               PyInstaller one-file build
 run-dev.bat             Run from source
+update-llama-server.ps1 Auto-downloads latest llama.cpp Windows CUDA release
 requirements-build.txt  Build-time dependency (PyInstaller)
 models.ini              Example presets
 settings.ini            Example settings
@@ -271,6 +284,7 @@ settings.ini            Example settings
 | WebUI does not open                                     | Enable **Open the WebUI…** in Settings. The console logs `[ready - opening …]` when it fires. Use **F6** to open it manually.           |
 | `Port in use` prompt                                    | Another process is listening on that port. Change `port` for the model or stop the other process.                                       |
 | `MCP config not found`                                  | Fix the path in Settings, or set the model's MCP to `off`.                                                                              |
+| `llama-server not found after update`                   | Press **F5** to restart the app; the auto-detect will find the freshly installed `llama-server.exe`.                                    |
 | `No module named tkinter` when building                 | Reinstall Python from python.org with the **tcl/tk and IDLE** option enabled.                                                           |
 | Edits in `models.ini` not showing                       | Press `Ctrl+R`. Unsaved changes in the editor block auto-reload.                                                                        |
 
