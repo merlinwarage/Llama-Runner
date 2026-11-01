@@ -143,6 +143,7 @@ class ConfigFormMixin:
             real = resolve_path(self.s["server_exe"], self.app_dir)
             self.preview.insert("end", subprocess.list2cmdline([exe] + build_args(merged, self.base_dir(), self.s["extra_args"]) + self.mcp_args(real, merged)[0]))
         self.preview.config(state="disabled")
+        self._adv_refresh_headers()
 
     def _browse(self, key):
         cur = unquote(self.fvars[key].get())

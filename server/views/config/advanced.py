@@ -113,6 +113,22 @@ class ConfigAdvancedMixin:
         self._adv_layout(reset=True)
         return page
 
+    def _adv_refresh_headers(self):
+        """Update header indicators showing count of set advanced controls."""
+        q = self.adv_filter.get().strip().lower()
+        for g in self.adv_groups:
+            match = [k for k, t in g["index"] if not q or q in t]
+            if not match:
+                continue
+            expanded = bool(q) or g["open"]
+            nset = sum(1 for k, _kd, _ex, _h in g["items"] if self.advvars[k][1].get().strip())
+            arrow = "\u25BE" if expanded else "\u25B8"
+            sep = "   \u00B7   "
+            txt = f"{arrow} {g['title'].upper()}{sep}{len(match)} options"
+            if nset:
+                txt += f"{sep}{nset} set"
+            g["hdr"].config(text=txt, fg=self.T["warn"] if nset else self.T["accent"])
+
     def _adv_toggle(self, g):
         g["open"] = not g["open"]
         self._adv_layout()
