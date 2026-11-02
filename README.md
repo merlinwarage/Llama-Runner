@@ -253,14 +253,14 @@ The checkboxes in the Settings tab save instantly. Paths need **Apply & save**.
 
 ```
 launcher.py             App window, sidebar, shortcuts, theme
-server_panel.py         llama-server runner: models.ini editor, process control, console
-bench_panel.py          llama-bench menu (sweeps + Markdown reports)
+server/server_panel.py  llama-server runner: models.ini editor, process control, console
+bench/bench_panel.py    llama-bench menu (sweeps + Markdown reports)
 build.bat               PyInstaller one-file build
 run-dev.bat             Run from source
 update-llama-server.ps1 Auto-downloads latest llama.cpp Windows CUDA release
-requirements-build.txt  Build-time dependency (PyInstaller)
-models.ini              Example presets
-settings.ini            Example settings
+config/models.ini       Example model presets
+config/settings.ini     Example settings
+config/mcp.json.example Example mcp
 ```
 
 ## Notes and limitations
