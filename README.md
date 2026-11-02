@@ -287,7 +287,7 @@ config/mcp.json.example Example mcp
 
 ## Contributing
 
-Fork it, enjoy it. The app is two plain Python files plus the benchmark panel, with no build step beyond PyInstaller, so it is easy to hack on.
+Fork it, enjoy it. No build step beyond PyInstaller, so it is easy to hack on.
 
 ## License
 
