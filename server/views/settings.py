@@ -46,12 +46,32 @@ class SettingsMixin:
         bar.grid(row=1, column=0, sticky="ew", padx=18, pady=12)
         self.Btn(bar, "\U0001F4BE Apply & save", self.apply_settings, T["accent_bg"], "#388bfd", fg="white", font=F["bold"]).pack(side="left")
         self.Btn(bar, "\u21BB Update llama-server", self._update_llama_server, T["panel"], T["hover"], font=F["ui"]).pack(side="left", padx=(6, 0))
-        tk.Label(bar, text="checkboxes save instantly; paths need Apply \u00B7 " + self.settings_path, bg=T["bg"], fg=T["muted"], font=F["small"]).pack(side="left", padx=10)
-        tk.Label(page, justify="left", anchor="w", bg=T["bg"], fg=T["muted"], font=F["small"], text=(
-            "Only one model runs at a time: starting another stops the running one first.\n"
-            "Shortcuts:  F5 start / restart   Shift+F5 stop   F6 open WebUI   Ctrl+S save   Ctrl+F filter models   Up/Down in filter = switch model\n"
-            "            Ctrl+Shift+N new from GGUF   Ctrl+Shift+D duplicate   Ctrl+R reload models.ini   Ctrl+L clear log   Ctrl+1/2/3 tabs")
-                 ).grid(row=2, column=0, sticky="w", padx=18, pady=(4, 0))
+        self.llama_version_lbl = tk.Label(bar, text="v" + self._read_llama_version(), bg=T["bg"], fg=T["warn"], font=F["small"])
+        self.llama_version_lbl.pack(side="left", padx=(6, 0))      
+
+        tk.Label(page, justify="left", anchor="w", bg=T["bg"], fg=T["muted"], font=F["small"], text=("Shortcuts:")).grid(row=2, column=0, sticky="w", padx=18, pady=(4, 0))
+
+        page.columnspacing = 6
+
+        shortcuts = [
+            ("F5", "start / restart"),
+            ("Shift+F5", "stop"),
+            ("F6", "open WebUI"),
+            ("Ctrl+S", "save"),
+            ("Ctrl+F", "filter models"),
+            ("Up/Down in filter", "switch model"),
+            ("Ctrl+Shift+N", "new from GGUF"),
+            ("Ctrl+Shift+D", "duplicate"),
+            ("Ctrl+R", "reload models.ini"),
+            ("Ctrl+L", "clear log"),
+            ("Ctrl+1 / 2 / 3", "tabs"),
+        ]
+        block = tk.Frame(page, bg=T["bg"])
+        block.grid(row=3, column=0, sticky="nw", padx=18, pady=2)
+        for i, (sc, desc) in enumerate(shortcuts):
+            tk.Label(block, text=sc, bg=T["bg"], fg=T["text"], font=F["small_b"], anchor="w", justify="left").grid(row=i, column=0, sticky="w", padx=(0, 6))
+            tk.Label(block, text=desc, bg=T["bg"], fg=T["muted"], font=F["small"], anchor="w", justify="left").grid(row=i, column=1, sticky="w", padx=(0, 6))
+
         return page
 
     def _browse_setting(self, key):
@@ -103,12 +123,34 @@ class SettingsMixin:
         self._after_change()
         self.flash("Settings saved")
 
+    def _llama_version_path(self):
+        return os.path.join(self.app_dir, "llama-server", ".llama_cpp-version")
+
+    def _read_llama_version(self):
+        try:
+            with open(self._llama_version_path(), "r") as f:
+                return f.read().strip()
+        except OSError:
+            return ""
+
+    def _refresh_llama_version(self, attempts=0):
+        v = self._read_llama_version()
+        if v:
+            self.llama_version_lbl.config(text="v" + v)
+        if v and v != self._last_llama_version:
+            self._last_llama_version = v
+            self.flash("llama-server updated to " + v)
+        elif attempts < 40:
+            self.after(3000, lambda a=attempts + 1: self._refresh_llama_version(a))
+
     def _update_llama_server(self):
+        self._last_llama_version = self._read_llama_version()
         ps_cmd = (
             f'powershell -ExecutionPolicy Bypass -File "{os.path.join(self.app_dir, "llama-server", "update-llama-server.ps1")}"'
         )
         try:
             subprocess.Popen(ps_cmd, shell=True, creationflags=subprocess.CREATE_NEW_CONSOLE)
             self.flash("Update started (check console)")
+            self.after(3000, self._refresh_llama_version)
         except Exception as e:
             messagebox.showerror("Update failed", str(e))

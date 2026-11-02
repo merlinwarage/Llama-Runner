@@ -6,7 +6,7 @@ import tkinter.font as tkfont
 from bench_panel import BenchPanel
 from server_panel import ServerPanel
 
-VERSION = "v9.7.0"
+VERSION = "v9.7.2"
 APP_DIR = os.path.dirname(os.path.abspath(sys.executable if getattr(sys, "frozen", False) else __file__))
 LOG = os.path.join(APP_DIR, "runner.log")
 
