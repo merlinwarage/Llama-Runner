@@ -186,15 +186,12 @@ temp = 0.6
 top-k = 20
 
 [Qwen3-0.6B-Q8_0]
-model = I:/AI/models/Qwen3-0.6B-Q8_0.gguf
-mmproj =                 ; empty values are ignored
-mcp = on                 ; app-only key, see below
+model = C:/models/Qwen3-0.6B-Q8_0.gguf
 
 [Qwen3-30B-A3B]
-model = I:/AI/models/Qwen3-30B-A3B-Q4_K_M.gguf
+model = C:/models/Qwen3-30B-A3B-Q4_K_M.gguf
 n-cpu-moe = 28
 ctx-size = 65536
-mcp = off
 ```
 
 **How keys become arguments**
