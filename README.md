@@ -235,15 +235,15 @@ Stored in `settings.ini` next to the app (shared with the Benchmark menu):
 
 ```ini
 [paths]
-models_ini = models.ini
-bench_exe  = llama-bench.exe
+models_ini = ./config/models.ini
+bench_exe  = ./llama-server/llama-bench.exe
 
 [server]
-server_exe   = I:\AI\llama-server-cuda13\llama-server.exe
+server_exe   = ./llama-server/llama-server.exe
 extra_args   =                      ; appended to every command
 open_browser = 1                    ; open WebUI when ready
 stop_on_exit = 1                    ; stop the server when the app closes
-mcp_config   = ..\models\mcp.json
+mcp_config   = ./config/mcp.json
 use_mcp      = 0
 ```
 
