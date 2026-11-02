@@ -30,8 +30,8 @@ ROWS = [
 PATH_FIELDS = [("model", "Model (.gguf)"), ("mmproj", "Multimodal projector (mmproj)"),
                ("chat-template-file", "Chat template file (chat-template-file)")]
 
-FLAG_FIELDS = [("no-webui", "no-webui"), ("metrics", "metrics"),
-               ("no-mmproj-offload", "no-mmproj-offload")]
+TRISTATE_FIELDS = [("jinja", "Jinja"), ("no-webui", "no-webui"), ("metrics", "metrics"),
+                   ("no-mmproj-offload", "no-mmproj-offload")]
 
 INT_KEYS = {"ctx-size": r"^\d+$", "n-cpu-moe": r"^\d+$", "threads": r"^-?\d+$", "batch-size": r"^\d+$",
             "ubatch-size": r"^\d+$", "parallel": r"^-?\d+$", "port": r"^\d+$",

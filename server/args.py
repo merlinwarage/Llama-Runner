@@ -2,7 +2,7 @@
 import os
 import shlex
 
-from server.constants import APP_ONLY, BOOL_FLAGS, FALSE, MUST_JOIN, NEGATABLE, PATH_KEYS, SHORT_FLAGS, TRUE
+from server.constants import APP_ONLY, BOOL_FLAGS, FALSE, MUST_JOIN, NEGATABLE, INVERSE_FLAGS, PATH_KEYS, SHORT_FLAGS, TRUE
 
 
 def unquote(v):
@@ -43,8 +43,12 @@ def build_args(merged, base, extra=""):
             elif off:
                 if k in NEGATABLE:
                     args.append("--no-" + k)
-            else:
-                args += [flag, v]
+                elif k in INVERSE_FLAGS:
+                    args.append("--" + k[3:])
+                elif k in BOOL_FLAGS:
+                    pass                      # plain switch: false == omit
+                else:
+                    args += [flag, v]
             continue
         if k in PATH_KEYS:
             v = join_base(v, base, k in MUST_JOIN)

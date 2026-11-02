@@ -2,7 +2,7 @@
 import tkinter as tk
 from tkinter import ttk
 
-from server.views.config.spec import FLAG_FIELDS, LOAD_MODES, MCP_CHOICES, PATH_FIELDS, ROWS
+from server.views.config.spec import TRISTATE_FIELDS, LOAD_MODES, MCP_CHOICES, PATH_FIELDS, ROWS
 
 
 class ConfigGeneralMixin:
@@ -119,41 +119,23 @@ class ConfigGeneralMixin:
                 w = self._combo(cell, var, choices) if choices else self._entry(cell, var)
                 w.pack(fill="x", ipady=2 if choices else 3)
         # MCP override + flags
-        fl = tk.Frame(card, bg=T["panel"])
-        fl.pack(fill="x", padx=12, pady=(2, 10))
-        tk.Label(fl, text="MCP", bg=T["panel"], fg=T["muted"], font=F["small"]).pack(side="left", padx=(0, 6))
-        self.mcp_var.trace_add("write", self._on_change)
-        self._combo(fl, self.mcp_var, MCP_CHOICES, width=9, state="readonly").pack(side="left")
-        hint = tk.Label(fl, text="", bg=T["panel"], fg=T["warn"], font=F["small"])
-        hint.pack(side="left", padx=(6, 22))
-        self.hints["mcp"] = hint
-        
-        tk.Label(fl, text="Load mode", bg=T["panel"], fg=T["muted"], font=F["small"]).pack(side="left", padx=(0, 6))
-        lm = tk.StringVar()
-        self.fvars["load-mode"] = lm
-        lm.trace_add("write", self._on_change)
-        self._combo(fl, lm, [""] + LOAD_MODES, width=12, state="readonly").pack(side="left")
-        lh = tk.Label(fl, text="", bg=T["panel"], fg=T["warn"], font=F["small"])
-        lh.pack(side="left", padx=(6, 22))
-        self.hints["load-mode"] = lh
-
-        tk.Label(fl, text="Jinja", bg=T["panel"], fg=T["muted"], font=F["small"]).pack(side="left", padx=(0, 6))
-        jv = tk.StringVar()
-        self.fvars["jinja"] = jv
-        jv.trace_add("write", self._on_change)
-        self._combo(fl, jv, ["", "true", "false"], width=7, state="readonly").pack(side="left")
-        jh = tk.Label(fl, text="", bg=T["panel"], fg=T["warn"], font=F["small"])
-        jh.pack(side="left", padx=(6, 22))
-        self.hints["jinja"] = jh
-
-        for key, label in FLAG_FIELDS:
-            var = tk.IntVar()
-            self.flagvars[key] = var
+        # MCP / load mode / tri-state flags: one row, label above control, hint at the right of the label
+        row = tk.Frame(card, bg=T["panel"])
+        row.pack(fill="x", padx=12, pady=(2, 10))
+        sel_cells = ([("mcp", "MCP", self.mcp_var, MCP_CHOICES),
+                      ("load-mode", "Load mode", None, [""] + LOAD_MODES)]
+                     + [(k, lbl, None, ["", "true", "false"]) for k, lbl in TRISTATE_FIELDS])
+        for c, (key, label, var, vals) in enumerate(sel_cells):
+            row.grid_columnconfigure(c, weight=1, uniform="t")
+            cell = tk.Frame(row, bg=T["panel"])
+            cell.grid(row=0, column=c, sticky="ew", padx=(0 if c == 0 else 8, 0))
+            cell_header(cell, key, label)
+            if var is None:
+                var = tk.StringVar()
+                self.fvars[key] = var
             var.trace_add("write", self._on_change)
-            tk.Checkbutton(fl, text=label, variable=var, bg=T["panel"], fg=T["text"], selectcolor=T["panel2"],
-                           activebackground=T["panel"], activeforeground=T["text"], font=F["ui"], bd=0,
-                           highlightthickness=0, cursor="hand2").pack(side="left", padx=(0, 16))
-
+            self._combo(cell, var, vals, state="readonly").pack(fill="x", ipady=2)
+            
         tk.Label(page, text="OTHER PARAMETERS  \u00B7  one 'key = value' per line, flags without dashes (e.g. cache-reuse = 256, ctx-checkpoints = 32). ; or # starts a comment",
                  bg=T["bg"], fg=T["muted"], font=F["small_b"], anchor="w").grid(row=1, column=0, sticky="ew", padx=18, pady=(10, 4))
         ex = tk.Frame(page, bg=T["term"], highlightthickness=1, highlightbackground=T["border"])

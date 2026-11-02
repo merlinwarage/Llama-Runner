@@ -33,6 +33,10 @@ NEGATABLE = {"jinja", "mmap", "webui", "cont-batching", "warmup", "context-shift
              "cache-idle-slots", "cache-prompt", "prefill-assistant", "skip-chat-parsing", "reasoning-preserve",
              "spec-draft-backend-sampling", "models-autoload", "mmproj-auto", "ui-mcp-proxy", "kv-unified", "agent"}
 
+# "no-X" switches whose explicit false maps to the positive "--X"
+INVERSE_FLAGS = {"no-webui", "no-mmproj-offload", "no-mmap", "no-warmup", "no-cont-batching",
+                 "no-context-shift", "no-kv-offload", "no-op-offload", "no-perf", "no-slots", "no-direct-io"}
+
 SHORT_FLAGS = {"ngl", "ctk", "ctv", "ncmoe", "cmoe", "ctkd", "ctvd", "ngld", "hfr", "hff", "hfd", "hfrd", "hfv", "hffv",
                "tb", "tbd", "kvu", "nkvo", "np", "dev", "devd", "lcs", "lcd", "sps", "ctxcp"}
 

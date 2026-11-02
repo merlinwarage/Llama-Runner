@@ -11,7 +11,7 @@ from server.args import build_args, join_base, unquote
 from server.constants import FALSE, GLOBAL, LEGACY_LOAD, TRUE
 from server.ini_doc import parse_kv
 from server.settings_store import write_setting
-from server.views.config.spec import INT_KEYS
+from server.views.config.spec import INT_KEYS, TRISTATE_FIELDS
 
 
 class ConfigFormMixin:
@@ -23,8 +23,9 @@ class ConfigFormMixin:
         d = self.doc.dict(name) if has else {}
         for key, var in self.fvars.items():
             var.set(d.get(key, ""))
-        if "jinja" in d and d["jinja"] == "":      # legacy bare flag "jinja"
-            self.fvars["jinja"].set("true")
+        for key, _lbl in TRISTATE_FIELDS:         # legacy bare flag "metrics" == true
+            if key in d and d[key] == "":
+                self.fvars[key].set("true")
         if not d.get("load-mode"):  # migrate legacy mlock / no-mmap checkboxes
             ml = "mlock" in d and (d["mlock"] == "" or d["mlock"].lower() in TRUE)
             nm = "no-mmap" in d and (d["no-mmap"] == "" or d["no-mmap"].lower() in TRUE)
