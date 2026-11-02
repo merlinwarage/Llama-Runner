@@ -28,7 +28,7 @@ BOOL_FLAGS = {"jinja", "mlock", "no-mmap", "cont-batching", "no-cont-batching", 
               "cpu-moe", "no-host", "no-op-offload", "check-tensors", "no-perf", "special", "mmap", "webui",
               "warmup", "kv-offload", "op-offload", "direct-io", "no-direct-io", "no-mmproj-offload"}
 
-NEGATABLE = {"mmap", "webui", "cont-batching", "warmup", "context-shift", "kv-offload", "slots", "op-offload",
+NEGATABLE = {"jinja", "mmap", "webui", "cont-batching", "warmup", "context-shift", "kv-offload", "slots", "op-offload",
              "perf", "direct-io", "repack", "escape", "log-jsonl", "log-prefix", "log-timestamps", "cors-credentials",
              "cache-idle-slots", "cache-prompt", "prefill-assistant", "skip-chat-parsing", "reasoning-preserve",
              "spec-draft-backend-sampling", "models-autoload", "mmproj-auto", "ui-mcp-proxy", "kv-unified", "agent"}

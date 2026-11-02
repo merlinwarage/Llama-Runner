@@ -127,6 +127,7 @@ class ConfigGeneralMixin:
         hint = tk.Label(fl, text="", bg=T["panel"], fg=T["warn"], font=F["small"])
         hint.pack(side="left", padx=(6, 22))
         self.hints["mcp"] = hint
+        
         tk.Label(fl, text="Load mode", bg=T["panel"], fg=T["muted"], font=F["small"]).pack(side="left", padx=(0, 6))
         lm = tk.StringVar()
         self.fvars["load-mode"] = lm
@@ -135,6 +136,16 @@ class ConfigGeneralMixin:
         lh = tk.Label(fl, text="", bg=T["panel"], fg=T["warn"], font=F["small"])
         lh.pack(side="left", padx=(6, 22))
         self.hints["load-mode"] = lh
+
+        tk.Label(fl, text="Jinja", bg=T["panel"], fg=T["muted"], font=F["small"]).pack(side="left", padx=(0, 6))
+        jv = tk.StringVar()
+        self.fvars["jinja"] = jv
+        jv.trace_add("write", self._on_change)
+        self._combo(fl, jv, ["", "true", "false"], width=7, state="readonly").pack(side="left")
+        jh = tk.Label(fl, text="", bg=T["panel"], fg=T["warn"], font=F["small"])
+        jh.pack(side="left", padx=(6, 22))
+        self.hints["jinja"] = jh
+
         for key, label in FLAG_FIELDS:
             var = tk.IntVar()
             self.flagvars[key] = var

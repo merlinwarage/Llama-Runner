@@ -23,6 +23,8 @@ class ConfigFormMixin:
         d = self.doc.dict(name) if has else {}
         for key, var in self.fvars.items():
             var.set(d.get(key, ""))
+        if "jinja" in d and d["jinja"] == "":      # legacy bare flag "jinja"
+            self.fvars["jinja"].set("true")
         if not d.get("load-mode"):  # migrate legacy mlock / no-mmap checkboxes
             ml = "mlock" in d and (d["mlock"] == "" or d["mlock"].lower() in TRUE)
             nm = "no-mmap" in d and (d["no-mmap"] == "" or d["no-mmap"].lower() in TRUE)
