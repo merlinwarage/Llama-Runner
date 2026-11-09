@@ -6,7 +6,7 @@ import tkinter.font as tkfont
 from bench_panel import BenchPanel
 from server_panel import ServerPanel
 
-VERSION = "v9.7.2"
+VERSION = "v9.8.0"
 APP_DIR = os.path.dirname(os.path.abspath(sys.executable if getattr(sys, "frozen", False) else __file__))
 LOG = os.path.join(APP_DIR, "runner.log")
 
@@ -99,7 +99,7 @@ class App(tk.Tk):
         side.pack_propagate(False)
         head = tk.Frame(side, bg=T["side"])
         head.pack(fill="x", padx=16, pady=(18, 4))
-        tk.Label(head, text="\u26A1 llama-server", bg=T["side"], fg=T["text"], font=self.f_title).pack(anchor="w")
+        tk.Label(head, text="\u26A1 Llama-Runner", bg=T["side"], fg=T["text"], font=self.f_title).pack(anchor="w")
 
         fonts = dict(ui=self.f_ui, bold=self.f_bold, small=self.f_small, small_b=(UI, 8, "bold"),
                      mono=self.f_mono, mono_s=(MONO, 9), h=(UI, 13, "bold"))

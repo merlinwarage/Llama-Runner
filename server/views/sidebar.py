@@ -1,12 +1,14 @@
 """Sidebar: model list, filter, selection (split from server_panel.py)"""
 import os
 import re
+import threading
 import tkinter as tk
 from tkinter import messagebox
 
 from server.args import join_base, unquote
 from server.constants import GLOBAL
 from server.settings_store import write_setting
+from server.widgets.hf_info import hf_reachable, show_model_info
 from server.widgets.model_item import ModelItem
 
 
@@ -39,7 +41,16 @@ class SidebarMixin:
         self.list_canvas.bind("<Configure>", lambda e: self.list_canvas.itemconfig(self.list_win, width=e.width))
         self.list_canvas.bind_all("<MouseWheel>", self._wheel, add="+")
         self.menu = tk.Menu(self, tearoff=0, bg=T["panel"], fg=T["text"], activebackground=T["accent_bg"], activeforeground="white", bd=0)
+        self.hf_ok = False
+        self._hf_probe()
         self.reload_ini()
+
+    def _hf_probe(self):
+        """Check huggingface.co reachability in the background; repeat every 2 minutes."""
+        def run():
+            self.hf_ok = hf_reachable()
+        threading.Thread(target=run, daemon=True).start()
+        self.after(120000, self._hf_probe)
 
     def _wheel(self, e):
         w = self.winfo_containing(e.x_root, e.y_root)
@@ -142,6 +153,8 @@ class SidebarMixin:
             m.add_command(label="Rename\u2026", command=self.rename)
             m.add_command(label="Show model folder", command=self.show_folder)
             m.add_command(label="Copy model id", command=lambda: self._copy_model_id(name))
+            if self.hf_ok:
+                m.add_command(label="Model info…", command=lambda: show_model_info(self, self.T, self.F, name))
             m.add_command(label="Delete", command=self.delete)
         else:
             m.add_command(label="Open models.ini", command=self.open_ini)
