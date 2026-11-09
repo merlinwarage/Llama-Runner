@@ -2,7 +2,9 @@
 import json
 import re
 import threading
+import time
 import tkinter as tk
+from concurrent.futures import ThreadPoolExecutor
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -69,9 +71,10 @@ def hf_lookup(name, limit=10):
     """Merge results of all search variants (full name as last resort), sorted by downloads."""
     terms = search_variants(name)
     merged = {}
-    for t in terms:
-        for m in hf_search(t, limit):
-            merged.setdefault(m.get("id") or m.get("modelId"), m)
+    with ThreadPoolExecutor(max_workers=len(terms)) as pool:  # variants in parallel
+        for results in pool.map(lambda t: hf_search(t, limit), terms):
+            for m in results:
+                merged.setdefault(m.get("id") or m.get("modelId"), m)
     if not merged and name not in terms:
         terms.append(name)
         for m in hf_search(name, limit):
@@ -90,18 +93,35 @@ def _fmt(v):
     return str(v)
 
 
-def show_model_info(parent, T, F, name):
+def show_model_info(parent, T, F, name="", searchable=False):
+    """HF results dialog. searchable=True adds a search bar on top (sidebar header button)."""
     top = parent.winfo_toplevel()
     dlg = tk.Toplevel(top)
-    dlg.title(f"Model info — {name}")
+    dlg.title("Model info" + (f" — {name}" if name and not searchable else ""))
     dlg.configure(bg=T["bg"])
     dlg.transient(top)
-    dlg.geometry("720x520")
+    w, h = 720, 520
+    x = (dlg.winfo_screenwidth() - w) // 2
+    y = (dlg.winfo_screenheight() - h) // 2
+    dlg.geometry(f"{w}x{h}+{max(0, x)}+{max(0, y)}")
     dlg.minsize(480, 300)
 
-    tk.Label(dlg, text=f"Hugging Face results for “{name}”", bg=T["bg"], fg=T["text"], font=F["h"],
-             anchor="w").pack(fill="x", padx=16, pady=(14, 2))
-    status = tk.Label(dlg, text="Searching…", bg=T["bg"], fg=T["muted"], font=F["small"], anchor="w")
+    qvar = tk.StringVar(value=name)
+    if searchable:
+        tk.Label(dlg, text="Search Hugging Face models", bg=T["bg"], fg=T["text"], font=F["h"],
+                 anchor="w").pack(fill="x", padx=16, pady=(14, 6))
+        sbar = tk.Frame(dlg, bg=T["panel"], highlightthickness=1, highlightbackground=T["border"], highlightcolor=T["accent"])
+        sbar.pack(fill="x", padx=16, pady=(0, 4))
+        tk.Label(sbar, text="⌕", bg=T["panel"], fg=T["muted"], font=F["ui"]).pack(side="left", padx=(8, 0))
+        qent = tk.Entry(sbar, textvariable=qvar, bg=T["panel"], fg=T["text"], insertbackground=T["text"],
+                        relief="flat", font=F["ui"])
+        qent.pack(side="left", fill="x", expand=True, padx=6, pady=6)
+        go = tk.Label(sbar, text="Search", bg=T["accent_bg"], fg="white", font=F["bold"], padx=14, cursor="hand2")
+        go.pack(side="right", fill="y")
+    else:
+        tk.Label(dlg, text=f"Hugging Face results for “{name}”", bg=T["bg"], fg=T["text"], font=F["h"],
+                 anchor="w").pack(fill="x", padx=16, pady=(14, 2))
+    status = tk.Label(dlg, text="", bg=T["bg"], fg=T["muted"], font=F["small"], anchor="w")
     status.pack(fill="x", padx=16, pady=(0, 8))
 
     bar = tk.Frame(dlg, bg=T["bg"])
@@ -166,31 +186,57 @@ def show_model_info(parent, T, F, name):
             w.bind("<Enter>", lambda e: [x.config(bg=T["hover"]) for x in (head, arrow, title, info)])
             w.bind("<Leave>", lambda e: [x.config(bg=T["panel"]) for x in (head, arrow, title, info)])
 
-    res = {}
+    state = {"gen": 0}
 
-    def worker():
-        try:
-            terms, data = hf_lookup(name)
-            res["term"], res["data"] = " / ".join(terms), data
-        except Exception as e:  # network / HTTP / JSON errors
-            res["err"] = str(e)
+    def run_search(_e=None):
+        q = qvar.get().strip()
+        if not q:
+            status.config(text="Type a model name and press Enter.", fg=T["muted"])
+            return
+        state["gen"] += 1
+        gen, res = state["gen"], {}
+        for w in body.winfo_children():
+            w.destroy()
+        canvas.yview_moveto(0)
+        status.config(text="Searching…", fg=T["muted"])
+        t0 = time.monotonic()
 
-    def poll():
-        if not dlg.winfo_exists():
-            return
-        if not res:
-            dlg.after(100, poll)
-            return
-        if "err" in res:
-            status.config(text=f"Request failed: {res['err']}", fg=T["err"])
-            return
-        data = res["data"] if isinstance(res["data"], list) else []
-        q = f"search: “{res['term']}”"
-        status.config(text=f"{len(data)} result(s) · {q} · click a row to expand" if data else f"No matching models found ({q}).")
-        for m in data:
-            if isinstance(m, dict):
-                add_row(m)
+        def worker():
+            # single assignment so poll() never sees a half-written result
+            try:
+                terms, data = hf_lookup(q)
+                res["out"] = ("ok", " / ".join(terms), data)
+            except Exception as e:  # network / HTTP / JSON errors
+                res["out"] = ("err", str(e), None)
 
-    threading.Thread(target=worker, daemon=True).start()
-    dlg.after(100, poll)
-    dlg.focus_set()
+        def poll():
+            if not dlg.winfo_exists() or gen != state["gen"]:
+                return  # dialog closed or superseded by a newer search
+            out = res.get("out")
+            if out is None:
+                status.config(text=f"Searching… {int(time.monotonic() - t0)}s")
+                dlg.after(200, poll)
+                return
+            kind, term, data = out
+            if kind == "err":
+                status.config(text=f"Request failed: {term}", fg=T["err"])
+                return
+            qs = f"search: “{term}”"
+            status.config(text=f"{len(data)} result(s) · {qs} · click a row to expand" if data
+                          else f"No matching models found ({qs}).", fg=T["muted"])
+            for m in data:
+                try:
+                    add_row(m)
+                except Exception:  # one odd record must not break the rest of the list
+                    continue
+
+        threading.Thread(target=worker, daemon=True).start()
+        dlg.after(100, poll)
+
+    if searchable:
+        qent.bind("<Return>", run_search)
+        go.bind("<Button-1>", run_search)
+        qent.focus_set()
+    else:
+        dlg.focus_set()
+    run_search()

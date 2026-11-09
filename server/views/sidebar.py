@@ -42,15 +42,41 @@ class SidebarMixin:
         self.list_canvas.bind_all("<MouseWheel>", self._wheel, add="+")
         self.menu = tk.Menu(self, tearoff=0, bg=T["panel"], fg=T["text"], activebackground=T["accent_bg"], activeforeground="white", bd=0)
         self.hf_ok = False
+        self.hf_btn = getattr(self, "hf_btn", None)
         self._hf_probe()
         self.reload_ini()
 
     def _hf_probe(self):
         """Check huggingface.co reachability in the background; repeat every 2 minutes."""
-        def run():
-            self.hf_ok = hf_reachable()
-        threading.Thread(target=run, daemon=True).start()
+        box = {}
+        threading.Thread(target=lambda: box.setdefault("ok", hf_reachable()), daemon=True).start()
+
+        def done():
+            if "ok" not in box:
+                self.after(200, done)
+                return
+            self.hf_ok = box["ok"]
+            self._hf_sync_btn()
+        self.after(200, done)
         self.after(120000, self._hf_probe)
+
+    def attach_hf_button(self, btn):
+        """Header button that opens the searchable model-info dialog; shown only while HF is reachable."""
+        self.hf_btn = btn
+        self._hf_sync_btn()
+
+    def _hf_sync_btn(self):
+        b = self.hf_btn
+        if b is None:
+            return
+        if self.hf_ok and not b.winfo_ismapped():
+            b.pack(side="right")
+        elif not self.hf_ok:
+            b.pack_forget()
+
+    def open_hf_search(self):
+        name = self.selected if self.selected and self.selected != GLOBAL else ""
+        show_model_info(self, self.T, self.F, name, searchable=True)
 
     def _wheel(self, e):
         w = self.winfo_containing(e.x_root, e.y_root)

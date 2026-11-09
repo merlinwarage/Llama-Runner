@@ -6,7 +6,7 @@ import tkinter.font as tkfont
 from bench_panel import BenchPanel
 from server_panel import ServerPanel
 
-VERSION = "v9.8.0"
+VERSION = "v9.9.0"
 APP_DIR = os.path.dirname(os.path.abspath(sys.executable if getattr(sys, "frozen", False) else __file__))
 LOG = os.path.join(APP_DIR, "runner.log")
 
@@ -99,7 +99,7 @@ class App(tk.Tk):
         side.pack_propagate(False)
         head = tk.Frame(side, bg=T["side"])
         head.pack(fill="x", padx=16, pady=(18, 4))
-        tk.Label(head, text="\u26A1 Llama-Runner", bg=T["side"], fg=T["text"], font=self.f_title).pack(anchor="w")
+        tk.Label(head, text="\u26A1 Llama-Runner", bg=T["side"], fg=T["text"], font=self.f_title).pack(side="left")
 
         fonts = dict(ui=self.f_ui, bold=self.f_bold, small=self.f_small, small_b=(UI, 8, "bold"),
                      mono=self.f_mono, mono_s=(MONO, 9), h=(UI, 13, "bold"))
@@ -116,6 +116,9 @@ class App(tk.Tk):
         HoverButton(foot, "\U0001F9EA Benchmark", self.show_bench, T["panel"], T["hover"], font=self.f_ui, anchor="w").pack(fill="x", pady=(0, 6))
         HoverButton(foot, "\u21BB Reload models.ini  Ctrl+R", self.reload, T["panel"], T["hover"], font=self.f_ui, anchor="w").pack(fill="x")
         self.srv.build_sidebar(side)
+        hf_btn = HoverButton(head, "⌕ HF", self.srv.open_hf_search, T["panel"], T["hover"], font=(UI, 9, "bold"),
+                             padx=10, pady=4)
+        self.srv.attach_hf_button(hf_btn)  # packed to the right only while huggingface.co is reachable
 
     def _bind_keys(self):
         def srv(fn):
