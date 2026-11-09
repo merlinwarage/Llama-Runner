@@ -1,7 +1,8 @@
 __pycache__
-build/
-dist/ 
+build
+dist
 *.spec
 runner.log 
 *.bak
 MEMORY.*
+.idea

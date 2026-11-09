@@ -141,10 +141,16 @@ class SidebarMixin:
             m.add_command(label="Duplicate", command=self.duplicate)
             m.add_command(label="Rename\u2026", command=self.rename)
             m.add_command(label="Show model folder", command=self.show_folder)
+            m.add_command(label="Copy model id", command=lambda: self._copy_model_id(name))
             m.add_command(label="Delete", command=self.delete)
         else:
             m.add_command(label="Open models.ini", command=self.open_ini)
         m.tk_popup(event.x_root, event.y_root)
+
+    def _copy_model_id(self, name):
+        self.clipboard_clear()
+        self.clipboard_append(name)
+        self.flash("Model id copied")
 
     def select(self, name):
         if name == self.selected:
