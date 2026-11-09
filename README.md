@@ -42,6 +42,7 @@ It is a single small Tkinter app with no third-party runtime dependencies.
 | **Speed readout**            | Prompt-processing and generation tokens/s parsed from the server log and shown in the header.                                                                                                                                                           |
 | **Benchmark menu**           | `llama-bench` runner with sweeps (batch, KV cache, threads, MoE) and Markdown reports, using the same `models.ini`.                                                                                                                                     |
 | **Safe editing**             | Comments and layout in `models.ini` are preserved; a `models.ini.bak` is written on every save; edits made in an external editor are picked up when the window regains focus.                                                                           |
+| **Model info (Hugging Face)** | Right-click a model → **Model info…**, or use the **⌕ HF** button next to the title (it has a search box). Searches the Hugging Face API, shows the 10 most downloaded matches as expandable rows with all details and a link to the model page. Shown only while `huggingface.co` is reachable. See [Model info](#model-info-hugging-face). |
 | **Quality of life**          | Model filter with arrow-key switching, context menu, duplicate / rename / delete, "New from GGUF…" file picker, log copy/save, dark theme with dark title bar.                                                                                          |
 
 ## Quick start
@@ -212,6 +213,16 @@ Set once in **Settings**:
 
 Then override per model in its **Config** tab (`default` / `on` / `off`). The choice is stored as `mcp = on|off` in that model's section, or in `[*]` to apply to all models. If MCP is enabled but the file cannot be found, the server is not started and the console says which paths were checked.
 
+## Model info (Hugging Face)
+
+Look up a model on [Hugging Face](https://huggingface.co) without leaving the app.
+
+- **From a model**: right-click it in the sidebar → **Model info…**. The dialog searches for that model's name.
+- **Free search**: click **⌕ HF** at the top right of the sidebar. The dialog has a search box (prefilled with the selected model); press `Enter` or click **Search**.
+- **Results**: up to 10 matches, sorted by download count. Click a row to expand it and see every field the API returns; the link at the bottom opens the model page in your browser.
+- **Smart search**: trailing quant/format tags are removed (`glm-4-7-flash-q4-k-m` → `glm-4-7-flash`), and version numbers are also tried with a dot (`4-7` → `4.7`). Both searches run in parallel and the results are merged. If nothing is found, the full name is tried.
+- **Availability**: both the menu item and the button appear only while `https://huggingface.co` is reachable (checked in the background at startup and every 2 minutes). Searches use `https://huggingface.co/api/models`; results are not cached.
+
 ## Keyboard shortcuts
 
 | Key                  | Action                                        |
@@ -253,6 +264,7 @@ The checkboxes in the Settings tab save instantly. Paths need **Apply & save**.
 
 ```
 launcher.py             App window, sidebar, shortcuts, theme
+server/widgets/hf_info.py  Hugging Face model info dialog and search
 server/server_panel.py  llama-server runner: models.ini editor, process control, console
 bench/bench_panel.py    llama-bench menu (sweeps + Markdown reports)
 build.bat               PyInstaller one-file build
